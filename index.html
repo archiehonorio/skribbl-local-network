@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>G Skribblr na</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── RESET & VARS ── */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e334d;
+      --text:#e8eaf6;--text-muted:#7c84a8;
+      --accent:#ff6b6b;--accent2:#ffd93d;--accent3:#6bcb77;--accent4:#4d96ff;--accent5:#c77dff;
+      --radius:14px;--radius-sm:8px;
+    }
+    body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+    /* ── SCREENS ── */
+    .screen{display:none;min-height:100vh;}
+    .screen.active{display:flex;}
+    #lobby-screen{align-items:center;justify-content:center;padding:1rem;background:radial-gradient(ellipse at 20% 50%,rgba(77,150,255,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(107,203,119,.06) 0%,transparent 50%),var(--bg);}
+    #game-screen{flex-direction:column;}
+
+    /* ── LOBBY ── */
+    .logo{text-align:center;margin-bottom:1.5rem;}
+    .logo h1{font-family:'Fredoka One',cursive;font-size:2.8rem;background:linear-gradient(135deg,var(--accent4),var(--accent5));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;}
+    .logo p{color:var(--text-muted);font-size:.85rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-top:.2rem;}
+    .lobby-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+    .lobby-card h2{font-family:'Fredoka One',cursive;font-size:1.4rem;margin-bottom:1.2rem;color:var(--text);}
+    .input-group{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem;}
+    .input-group label{font-size:.78rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
+    .input-group input,.input-group select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:600;padding:.6rem .8rem;outline:none;transition:border-color .15s;}
+    .input-group input:focus,.input-group select:focus{border-color:var(--accent4);}
+    .btn{border:none;border-radius:var(--radius-sm);cursor:pointer;font-family:'Fredoka One',cursive;font-size:1rem;font-weight:400;letter-spacing:.5px;padding:.7rem 1.2rem;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;}
+    .btn-primary{background:linear-gradient(135deg,var(--accent4),#2979d8);color:#fff;}
+    .btn-primary:hover{filter:brightness(1.12);transform:translateY(-1px);}
+    .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+    .btn-secondary:hover{border-color:var(--accent4);color:var(--accent4);}
+    .btn-warn{background:linear-gradient(135deg,var(--accent2),#f59e0b);color:#1a1300;}
+    .btn-warn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+    .btn-success{background:linear-gradient(135deg,var(--accent3),#3aad56);color:#0a1f0f;}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;filter:none!important;}
+    .divider{text-align:center;color:var(--text-muted);font-size:.78rem;font-weight:700;margin:.8rem 0;position:relative;}
+    .divider::before,.divider::after{content:"";position:absolute;top:50%;width:43%;height:1px;background:var(--border);}
+    .divider::before{left:0;} .divider::after{right:0;}
+    .status-msg{font-size:.8rem;font-weight:700;margin-top:.8rem;text-align:center;min-height:1.2rem;}
+    .status-msg.ok{color:var(--accent3);} .status-msg.err{color:var(--accent);}
+
+    /* ── PIN INPUT ── */
+    .pin-display{
+      display:flex;justify-content:center;gap:.5rem;margin:.6rem 0;
+    }
+    .pin-digit{
+      width:52px;height:64px;background:var(--surface2);border:2px solid var(--border);
+      border-radius:10px;font-family:'Fredoka One',cursive;font-size:2rem;
+      color:var(--accent2);text-align:center;outline:none;caret-color:var(--accent4);
+      transition:border-color .15s,box-shadow .15s;
+    }
+    .pin-digit:focus{border-color:var(--accent4);box-shadow:0 0 0 3px rgba(77,150,255,.2);}
+    .pin-digit.filled{border-color:var(--accent2);color:var(--accent2);}
+    .room-pin-big{
+      font-family:'Fredoka One',cursive;font-size:3rem;letter-spacing:.6rem;
+      color:var(--accent2);text-align:center;
+      background:var(--surface2);border:2px dashed var(--accent2);
+      border-radius:var(--radius);padding:.7rem 1.2rem;margin:.3rem 0;
+      cursor:pointer;user-select:all;transition:background .15s;
+    }
+    .room-pin-big:hover{background:rgba(255,217,61,.07);}
+    .room-pin-hint{font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:-.2rem;margin-bottom:.6rem;}
+    .pin-join-row{display:flex;gap:.5rem;align-items:flex-end;}
+    .pin-join-row .pin-display{flex:1;justify-content:flex-start;}
+
+    /* ── PLAYER CHIPS ── */
+    .players-list{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0;}
+    .player-chip{display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:.3rem .7rem;font-size:.8rem;font-weight:700;}
+    .player-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);}
+    .player-chip.host .dot{background:var(--accent2);}
+
+    /* ── JOIN STATUS ── */
+    .join-status-card{text-align:center;padding:1.2rem 0;}
+    .join-spinner{font-size:1.8rem;animation:spin 1.2s linear infinite;display:inline-block;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* ── GAME HEADER ── */
+    .game-header{display:grid;grid-template-columns:1fr auto auto 1fr;align-items:center;gap:.5rem;background:var(--surface);border-bottom:1px solid var(--border);padding:.5rem 1rem;}
+    .header-left,.header-right{display:flex;align-items:center;}
+    .header-right{justify-content:flex-end;}
+    .round-badge{background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:.3rem .8rem;font-size:.78rem;font-weight:800;color:var(--text-muted);}
+    .timer-ring{position:relative;width:52px;height:52px;}
+    .timer-ring svg{position:absolute;top:0;left:0;}
+    .timer-ring .bg{fill:none;stroke:var(--border);stroke-width:4;}
+    .timer-ring .fg{fill:none;stroke-width:4;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .9s linear,stroke .5s;}
+    .timer-ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1rem;color:var(--text);}
+    .word-display{display:flex;flex-direction:column;align-items:center;gap:.15rem;}
+    .word-hint{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:center;}
+    .letter-blank{display:inline-flex;align-items:center;justify-content:center;min-width:1.4rem;height:1.6rem;border-bottom:2px solid var(--text-muted);font-family:'Fredoka One',cursive;font-size:1.1rem;color:transparent;background:transparent;margin:0 1px;transition:all .3s;}
+    .letter-blank.revealed{color:var(--accent3);border-color:var(--accent3);}
+    .word-category{font-size:.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+    .drawer-label{font-size:.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
+    .drawer-name{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--accent4);}
+
+    /* ── GAME BODY ── */
+    .game-body{display:grid;grid-template-columns:180px 1fr 220px;flex:1;overflow:hidden;height:calc(100vh - 60px);}
+    .scoreboard,.chat-panel{background:var(--surface);border:1px solid var(--border);overflow-y:auto;padding:.8rem;}
+    .scoreboard{border-top:none;border-left:none;}
+    .chat-panel{border-top:none;border-right:none;display:flex;flex-direction:column;}
+    .scoreboard h3,.chat-panel h3{font-family:'Fredoka One',cursive;font-size:.95rem;color:var(--text-muted);margin-bottom:.6rem;}
+    .score-list{display:flex;flex-direction:column;gap:.3rem;}
+    .score-item{display:grid;grid-template-columns:1.4rem 1fr auto;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.4rem .5rem;transition:all .3s;}
+    .score-item.drawing{border-color:var(--accent4);background:rgba(77,150,255,.08);}
+    .score-item.guessed{border-color:var(--accent3);}
+    .score-rank{font-family:'Fredoka One',cursive;font-size:.8rem;color:var(--text-muted);}
+    .score-rank.gold{color:var(--accent2);} .score-rank.silver{color:#adb5bd;} .score-rank.bronze{color:#cd7f32;}
+    .score-name{font-size:.78rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .score-item.guessed .score-name::after{content:' ✓';color:var(--accent3);}
+    .score-pts{font-family:'Fredoka One',cursive;font-size:.9rem;color:var(--accent4);}
+
+    /* ── CANVAS ── */
+    .canvas-area{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;gap:.7rem;background:var(--bg);}
+    .canvas-wrapper{border-radius:var(--radius);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+    canvas{display:block;cursor:crosshair;touch-action:none;}
+    canvas.not-drawer{cursor:default;}
+
+    /* ── TOOLBAR ── */
+    .toolbar{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .7rem;}
+    .colors{display:flex;flex-wrap:wrap;gap:.3rem;max-width:160px;}
+    .color-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s;}
+    .color-swatch:hover{transform:scale(1.2);}
+    .color-swatch.active{border-color:var(--text);transform:scale(1.15);}
+    .tool-sep{width:1px;height:28px;background:var(--border);}
+    .brush-sizes{display:flex;align-items:center;gap:.3rem;}
+    .size-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;transition:border-color .1s;}
+    .size-btn.active{border-color:var(--accent4);}
+    .size-btn .dot{background:var(--text);border-radius:50%;}
+    .tool-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text);font-size:.88rem;padding:.3rem .5rem;transition:border-color .1s;}
+    .tool-btn:hover{border-color:var(--accent4);}
+    .tool-btn.active{border-color:var(--accent4);background:rgba(77,150,255,.15);}
+    .clear-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+    /* ── CHAT ── */
+    .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;margin-bottom:.5rem;min-height:0;}
+    .chat-msg{font-size:.78rem;line-height:1.35;word-break:break-word;}
+    .chat-msg .sender{font-weight:800;color:var(--accent4);}
+    .chat-msg.own .sender{color:var(--accent2);}
+    .chat-msg.system{color:var(--text-muted);font-style:italic;font-size:.72rem;}
+    .chat-msg.close .sender{color:var(--accent5);}
+    .chat-msg.correct-reveal{background:rgba(107,203,119,.18);border:1px solid rgba(107,203,119,.4);color:var(--accent3);font-weight:700;border-radius:6px;padding:.3rem .5rem;}
+    .chat-input-row{display:flex;gap:.4rem;}
+    .chat-input-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:600;padding:.5rem .7rem;outline:none;}
+    .chat-input-row input:focus{border-color:var(--accent4);}
+    .chat-input-row button{background:var(--accent4);border:none;border-radius:var(--radius-sm);color:#fff;cursor:pointer;font-family:'Fredoka One',cursive;font-size:.85rem;padding:.5rem .8rem;}
+
+    /* ── OVERLAYS ── */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px);}
+    .overlay-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:400px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5);}
+    .overlay-card h2{font-family:'Fredoka One',cursive;font-size:1.6rem;margin-bottom:.8rem;}
+    .word-choices{display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem;}
+    .word-choice-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;padding:.7rem 1rem;transition:all .15s;}
+    .word-choice-btn:hover{border-color:var(--accent4);background:rgba(77,150,255,.08);}
+    .diff-badge{border-radius:100px;font-size:.68rem;font-weight:800;padding:.2rem .5rem;text-transform:uppercase;}
+    .diff-badge.easy{background:rgba(107,203,119,.2);color:var(--accent3);}
+    .diff-badge.medium{background:rgba(255,217,61,.2);color:var(--accent2);}
+    .diff-badge.hard{background:rgba(255,107,107,.2);color:var(--accent);}
+    .word-reveal{font-family:'Fredoka One',cursive;font-size:2rem;color:var(--accent2);margin:.5rem 0;}
+    .round-scores{display:flex;flex-direction:column;gap:.4rem;margin-top:.8rem;}
+    .round-score-row{display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:var(--radius-sm);padding:.4rem .7rem;font-size:.85rem;}
+    .round-score-row .pts{font-family:'Fredoka One',cursive;color:var(--accent3);}
+    .leaderboard-list{display:flex;flex-direction:column;gap:.5rem;}
+    .lb-row{display:grid;grid-template-columns:2.5rem 1fr auto;align-items:center;gap:.5rem;background:var(--surface2);border-radius:var(--radius-sm);padding:.6rem .8rem;}
+    .lb-rank{font-size:1.4rem;}
+    .lb-name{font-weight:700;text-align:left;}
+    .lb-pts{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--accent4);}
+
+    /* ── TOASTS ── */
+    .toast-container{position:fixed;top:1rem;right:1rem;z-index:999;display:flex;flex-direction:column;gap:.4rem;}
+    .toast{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:.82rem;font-weight:700;padding:.6rem 1rem;box-shadow:0 4px 16px rgba(0,0,0,.3);animation:slideIn .2s ease;}
+    .toast.success{border-color:var(--accent3);color:var(--accent3);}
+    .toast.error{border-color:var(--accent);color:var(--accent);}
+    @keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+    /* ── MISC ── */
+    .room-flow{display:flex;flex-direction:column;gap:.75rem;margin-top:1rem;}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:700px){
+      .game-body{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}
+      .scoreboard{display:none;}
+      .chat-panel{height:160px;}
+    }
+  </style>
+</head>
+<body>
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ═══ LOBBY ═══ -->
+<div id="lobby-screen" class="screen">
+  <div>
+    <div class="logo"><h1>G Skribbl na</h1><p>Draw &bull; Guess &bull; Win</p></div>
+    <div class="lobby-card">
+      <h2>Enter the Room</h2>
+
+      <div class="input-group">
+        <label for="name-input">Your Name</label>
+        <input id="name-input" type="text" placeholder="e.g. Picasso" maxlength="20"/>
+      </div>
+
+      <!-- ── INITIAL CHOICE ── -->
+      <div id="initial-btns">
+        <button id="create-btn" class="btn btn-primary" style="width:100%;">🎨 Create a Room</button>
+        <div class="divider">or join with a PIN</div>
+
+        <!-- 6-digit PIN input -->
+        <div style="margin-bottom:.5rem;">
+          <div style="font-size:.78rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Room PIN (6 digits)</div>
+          <div class="pin-display" id="pin-input-row">
+            <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin0"/>
+            <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin1"/>
+            <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin2"/>
+            <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin3"/>
+            <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin4"/>
+            <input class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" id="pin5"/>
+          </div>
+        </div>
+        <button id="join-btn" class="btn btn-secondary" style="width:100%;">🔗 Join Room</button>
+      </div>
+
+      <!-- ══ HOST PANEL ══ -->
+      <div id="host-section" style="display:none;" class="room-flow">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+          <div class="input-group">
+            <label for="rounds-input">Rounds</label>
+            <select id="rounds-input">
+              <option value="2">2 Rounds</option>
+              <option value="3" selected>3 Rounds</option>
+              <option value="5">5 Rounds</option>
+              <option value="7">7 Rounds</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="timer-input">Time / Round</label>
+            <select id="timer-input">
+              <option value="30">30 sec</option>
+              <option value="60">60 sec</option>
+              <option value="80" selected>80 sec</option>
+              <option value="90">90 sec</option>
+              <option value="120">2 min</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="gen-room-btn" class="btn btn-warn" style="width:100%;">🔑 Generate Room PIN</button>
+
+        <!-- PIN display -->
+        <div id="host-pin-area" style="display:none;">
+          <div style="font-size:.78rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;text-align:center;">Tell players this PIN:</div>
+          <div class="room-pin-big" id="host-pin-display" title="Click to copy">------</div>
+          <div class="room-pin-hint">Players just type these 6 numbers — that's it!</div>
+
+          <div style="font-size:.82rem;font-weight:700;color:var(--text-muted);margin-top:.4rem;">Players in lobby:</div>
+          <div id="player-chips" class="players-list"></div>
+          <div id="slots-grid" style="display:flex;flex-direction:column;gap:.3rem;"></div>
+
+          <!-- PIN upload progress -->
+          <div id="pin-upload-status" style="font-size:.75rem;color:var(--text-muted);text-align:center;margin:.3rem 0;"></div>
+
+          <button id="start-game-btn" class="btn btn-primary" style="width:100%;margin-top:.5rem;">🚀 Start Game</button>
+        </div>
+      </div>
+
+      <!-- ══ JOIN PANEL ══ -->
+      <div id="join-section" style="display:none;" class="room-flow">
+        <div id="join-connecting" class="join-status-card">
+          <div class="join-spinner">🔄</div>
+          <div style="font-weight:700;color:var(--accent4);font-size:.95rem;margin-top:.5rem;">Connecting to room…</div>
+          <div id="join-step-msg" style="font-size:.78rem;color:var(--text-muted);margin-top:.3rem;">Fetching room from relay…</div>
+        </div>
+        <div id="join-connected" style="display:none;" class="join-status-card">
+          <div style="font-size:2rem;color:var(--accent3);">✓</div>
+          <div style="font-weight:700;color:var(--accent3);font-size:1rem;margin-top:.3rem;">You're in the lobby!</div>
+          <div style="font-size:.82rem;color:var(--text-muted);margin-top:.3rem;">Waiting for host to start…</div>
+        </div>
+        <div id="join-failed" style="display:none;" class="join-status-card">
+          <div style="font-size:1.4rem;">❌</div>
+          <div style="font-weight:700;color:var(--accent);font-size:.9rem;margin-top:.3rem;" id="join-fail-msg">Connection failed</div>
+          <button id="join-retry-btn" class="btn btn-secondary" style="margin-top:.6rem;font-size:.8rem;padding:.4rem .8rem;">↺ Try Again</button>
+        </div>
+      </div>
+
+      <p id="lobby-status" class="status-msg"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GAME ═══ -->
+<div id="game-screen" class="screen">
+  <header class="game-header">
+    <div class="header-left"><div class="round-badge">Round <span id="round-label">1</span> / <span id="total-rounds-label">3</span></div></div>
+    <div class="timer-ring">
+      <svg viewBox="0 0 52 52" width="52" height="52">
+        <circle class="bg" cx="26" cy="26" r="22"/>
+        <circle id="timer-fg" class="fg" cx="26" cy="26" r="22" stroke-dasharray="138.23" stroke-dashoffset="0"/>
+      </svg>
+      <div class="num" id="timer-num">80</div>
+    </div>
+    <div class="word-display"><div id="word-display" class="word-hint">? ? ?</div><div id="word-category" class="word-category"></div></div>
+    <div class="header-right"><div><div class="drawer-label">Drawing:</div><div id="drawer-name" class="drawer-name">—</div></div></div>
+  </header>
+  <div class="game-body">
+    <aside class="scoreboard"><h3>🏆 Scores</h3><div id="score-list" class="score-list"></div></aside>
+    <main class="canvas-area">
+      <div class="canvas-wrapper"><canvas id="game-canvas"></canvas></div>
+      <div id="toolbar" class="toolbar" style="display:none;">
+        <div id="colors" class="colors"></div>
+        <div class="tool-sep"></div>
+        <div id="brush-sizes" class="brush-sizes"></div>
+        <div class="tool-sep"></div>
+        <button id="eraser-btn" class="tool-btn" title="Eraser">🧹</button>
+        <button id="bucket-btn" class="tool-btn" title="Fill">🪣</button>
+        <button id="undo-btn" class="tool-btn" title="Undo (Ctrl+Z)">↩</button>
+        <button id="redo-btn" class="tool-btn" title="Redo (Ctrl+Y)">↪</button>
+        <button id="clear-btn" class="tool-btn clear-btn" title="Clear">🗑️ Clear</button>
+      </div>
+    </main>
+    <aside class="chat-panel">
+      <h3>💬 Guesses</h3>
+      <div id="chat-messages" class="chat-messages"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Type your guess…" maxlength="60"/>
+        <button id="send-btn">Send</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══ OVERLAYS ═══ -->
+<div id="word-choice-overlay" class="overlay" style="display:none;">
+  <div class="overlay-card">
+    <h2>✏️ You're Drawing!</h2>
+    <p style="color:var(--text-muted);margin-bottom:.5rem;">Choose a word to draw:</p>
+    <div id="word-choices" class="word-choices"></div>
+  </div>
+</div>
+<div id="round-end-overlay" class="overlay" style="display:none;">
+  <div class="overlay-card">
+    <h2 id="round-end-title">⏰ Time's up!</h2>
+    <p style="color:var(--text-muted);margin-bottom:.3rem;">The word was:</p>
+    <div id="round-end-word" class="word-reveal">—</div>
+    <div id="round-scores-list" class="round-scores"></div>
+  </div>
+</div>
+<div id="game-end-overlay" class="overlay" style="display:none;">
+  <div class="overlay-card">
+    <h2>🎉 Game Over!</h2>
+    <p style="color:var(--text-muted);margin-bottom:1rem;">Final Leaderboard</p>
+    <div id="leaderboard-list" class="leaderboard-list"></div>
+    <button id="play-again-btn" class="btn btn-primary" style="margin-top:1.5rem;width:100%;">Play Again</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+document.getElementById('lobby-screen').classList.add('active');
+const savedName=localStorage.getItem('skribblr_name');
+if(savedName)document.getElementById('name-input').value=savedName;
+document.getElementById('name-input').addEventListener('input',e=>localStorage.setItem('skribblr_name',e.target.value));
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function setStatus(t,c){const el=$("lobby-status");el.textContent=t;el.className="status-msg"+(c?" "+c:"");}
+function toast(t,c="info",dur=3000){const e=document.createElement("div");e.className=`toast ${c}`;e.textContent=t;$("toast-container").appendChild(e);setTimeout(()=>e.remove(),dur);}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]:1+Math.min(d[i-1][j],d[i][j-1],d[i-1][j-1]);return d[a.length][b.length];}
+
+async function compress(str){try{const bytes=new TextEncoder().encode(str);const cs=new CompressionStream("deflate-raw");const w=cs.writable.getWriter();w.write(bytes);w.close();const buf=await new Response(cs.readable).arrayBuffer();return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}catch{return btoa(encodeURIComponent(str));}}
+async function decompress(s){const b64=s.trim().replace(/-/g,"+").replace(/_/g,"/");const p=b64+"=".repeat((4-b64.length%4)%4);const bytes=Uint8Array.from(atob(p),c=>c.charCodeAt(0));try{const ds=new DecompressionStream("deflate-raw");const w=ds.writable.getWriter();w.write(bytes);w.close();return await new Response(ds.readable).text();}catch{return decodeURIComponent(atob(p));}}
+
+// ── DOM REFS ──
+const nameInput=$("name-input"),roundsInput=$("rounds-input"),lobbyStatus=$("lobby-status");
+const toolbar=$("toolbar"),chatInput=$("chat-input"),chatMessages=$("chat-messages"),sendBtn=$("send-btn");
+const roundLabel=$("round-label"),totalRoundsLabel=$("total-rounds-label");
+const timerNum=$("timer-num"),timerFg=$("timer-fg");
+const wordDisplayEl=$("word-display"),wordCategoryEl=$("word-category"),drawerNameEl=$("drawer-name");
+const scoreList=$("score-list"),canvas=$("game-canvas"),ctx=canvas.getContext("2d");
+const wordChoiceOverlay=$("word-choice-overlay"),wordChoicesEl=$("word-choices");
+const roundEndOverlay=$("round-end-overlay"),roundEndWordEl=$("round-end-word");
+const roundScoresList=$("round-scores-list"),roundEndTitle=$("round-end-title");
+const gameEndOverlay=$("game-end-overlay"),leaderboardList=$("leaderboard-list");
+const playAgainBtn=$("play-again-btn"),toastContainer=$("toast-container");
+const lobbyScreen=$("lobby-screen"),gameScreen=$("game-screen");
+
+const RELAY="https://ntfy.sh";
+const MAX_SLOTS=15;
+
+const G={
+  myName:"",isHost:false,myId:null,
+  words:[],peers:{},
+  auth:{},disp:{},
+  currentDrawer:null,currentWord:null,currentWordMasked:[],
+  currentCategory:"",revealedIndices:new Set(),
+  timeLeft:80,maxTime:80,timerInterval:null,
+  totalRounds:3,currentRound:1,
+  turnOrder:[],turnIndex:0,
+  guessedThisRound:false,canDraw:false,
+  endTurnCalled:false,guessCount:0,
+  isEraserActive:false,isBucketActive:false,currentColor:"#000000",brushSize:6,
+  isDrawing:false,lastX:null,lastY:null,
+};
+const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
+
+// ── WORDS ──
+fetch("words.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>G.words=d).catch(()=>{
+  G.words=[{word:"cat",category:"animals",difficulty:"easy",score:100},{word:"sun",category:"nature",difficulty:"easy",score:100},{word:"elephant",category:"animals",difficulty:"medium",score:200},{word:"volcano",category:"nature",difficulty:"medium",score:200},{word:"narwhal",category:"animals",difficulty:"hard",score:300},{word:"pizza",category:"food",difficulty:"easy",score:100},{word:"dragon",category:"fantasy",difficulty:"medium",score:200},{word:"mountain",category:"nature",difficulty:"easy",score:150},{word:"guitar",category:"music",difficulty:"easy",score:100},{word:"astronaut",category:"space",difficulty:"hard",score:300},{word:"rainbow",category:"nature",difficulty:"easy",score:100},{word:"telescope",category:"space",difficulty:"medium",score:200},{word:"butterfly",category:"animals",difficulty:"medium",score:200},{word:"waterfall",category:"nature",difficulty:"medium",score:200},{word:"spaceship",category:"space",difficulty:"medium",score:200},{word:"cactus",category:"nature",difficulty:"easy",score:100},{word:"igloo",category:"places",difficulty:"medium",score:200},{word:"tornado",category:"nature",difficulty:"medium",score:200},{word:"submarine",category:"vehicles",difficulty:"hard",score:300},{word:"penguin",category:"animals",difficulty:"easy",score:100}];
+});
+function pickWords(){const pool=[...G.words];shuffle(pool);const e=pool.find(w=>w.difficulty==="easy"),m=pool.find(w=>w.difficulty==="medium"),h=pool.find(w=>w.difficulty==="hard");const choices=[e,m,h].filter(Boolean);for(const w of pool){if(choices.length>=3)break;if(!choices.includes(w))choices.push(w);}return choices.slice(0,3);}
+
+// ── NET ──
+function sendTo(id,msg){const p=G.peers[id];if(p&&p.dc&&p.dc.readyState==="open")p.dc.send(JSON.stringify(msg));}
+function sendToHost(msg){sendTo("host",msg);}
+function broadcast(msg,excl=null){for(const[id,p]of Object.entries(G.peers))if(id!==excl&&p.dc&&p.dc.readyState==="open")p.dc.send(JSON.stringify(msg));}
+function nameOf(id){if(id===G.myId)return G.myName;return G.disp[id]?.name||G.peers[id]?.name||id;}
+
+// ── STATE SYNC ──
+function broadcastState(){
+  if(!G.isHost)return;
+  broadcast({type:"ROUND_SYNC",round:G.currentRound,totalRounds:G.totalRounds,timeLeft:G.timeLeft,drawer:G.currentDrawer,masked:G.currentWordMasked,category:G.currentCategory,revealedIndices:[...G.revealedIndices],disp:G.disp,turnOrder:G.turnOrder,turnIndex:G.turnIndex});
+}
+function applyRoundSync(msg){
+  G.currentRound=msg.round;G.totalRounds=msg.totalRounds;G.timeLeft=msg.timeLeft;G.currentDrawer=msg.drawer;
+  G.currentWordMasked=[...(msg.masked||[])];G.currentCategory=msg.category||"";
+  G.revealedIndices=new Set(msg.revealedIndices||[]);G.turnOrder=msg.turnOrder||G.turnOrder;G.turnIndex=msg.turnIndex??G.turnIndex;
+  if(msg.disp){G.disp=msg.disp;if(G.disp[G.myId])G.guessedThisRound=G.disp[G.myId].guessedThisRound;}
+  roundLabel.textContent=G.currentRound;totalRoundsLabel.textContent=G.totalRounds;
+  renderTimer();updateWordDisplay(G.currentWordMasked,G.currentCategory);updateDrawerUI();updateScoreboard();
+  chatInput.disabled=G.canDraw||G.guessedThisRound;sendBtn.disabled=G.canDraw||G.guessedThisRound;
+}
+function pushScores(){if(!G.isHost)return;broadcast({type:"score-update",disp:G.disp});}
+
+// ═══════════════════════════════════════════
+// PIN-BASED SIGNALING
+// ─────────────────────────────────────────
+// 1. Host generates a random 6-digit PIN like "482910"
+// 2. Host publishes all SDP offers to ntfy.sh under:
+//      skribblr-{PIN}-slots
+//    Each offer is a separate message with peerId + compressed SDP.
+// 3. Joiner reads the PIN, fetches offers from ntfy.sh
+// 4. Joiner picks a slot, posts answer to:
+//      skribblr-{PIN}-answers
+// 5. Host polls answers topic, applies each answer
+// ═══════════════════════════════════════════
+
+// Lobby DOM
+const initialBtns=$("initial-btns"),hostSection=$("host-section"),joinSection=$("join-section");
+const createBtn=$("create-btn"),joinBtn=$("join-btn");
+const genRoomBtn=$("gen-room-btn"),hostPinArea=$("host-pin-area"),hostPinDisplay=$("host-pin-display");
+const startGameBtn=$("start-game-btn"),playerChips=$("player-chips"),slotsGrid=$("slots-grid");
+const joinConnecting=$("join-connecting"),joinConnected=$("join-connected");
+const joinFailed=$("join-failed"),joinFailMsg=$("join-fail-msg"),joinRetryBtn=$("join-retry-btn");
+const joinStepMsg=$("join-step-msg"),pinUploadStatus=$("pin-upload-status");
+
+// Pin input wiring — auto-advance on digit entry
+const pinInputs=Array.from({length:6},(_,i)=>$("pin"+i));
+pinInputs.forEach((el,i)=>{
+  el.addEventListener('input',e=>{
+    // Filter non-digits
+    el.value=el.value.replace(/\D/g,"").slice(0,1);
+    if(el.value)el.classList.add("filled");else el.classList.remove("filled");
+    if(el.value&&i<5)pinInputs[i+1].focus();
+  });
+  el.addEventListener('keydown',e=>{
+    if(e.key==="Backspace"&&!el.value&&i>0)pinInputs[i-1].focus();
+    if(e.key==="Enter")joinBtn.click();
+  });
+  el.addEventListener('paste',e=>{
+    e.preventDefault();
+    const text=(e.clipboardData||window.clipboardData).getData("text").replace(/\D/g,"").slice(0,6);
+    text.split("").forEach((ch,j)=>{if(pinInputs[i+j]){pinInputs[i+j].value=ch;pinInputs[i+j].classList.add("filled");}});
+    const next=Math.min(i+text.length,5);pinInputs[next].focus();
+  });
+});
+
+function getEnteredPin(){return pinInputs.map(el=>el.value).join("");}
+
+let hostRoomPin=null;
+let hostPollTimer=null;
+const appliedAnswers=new Set();
+
+// ── HOST: Generate PIN and publish offers ──
+async function openLobby(){
+  genRoomBtn.disabled=true;genRoomBtn.textContent="Generating…";
+  setStatus("Creating connection slots…","");pinUploadStatus.textContent="Building WebRTC offers…";
+
+  // Generate 6-digit PIN
+  hostRoomPin=String(Math.floor(100000+Math.random()*900000));
+
+  // Build all offers
+  const offers=[];
+  await Promise.all(Array.from({length:MAX_SLOTS},()=>{
+    const peerId="p_"+Math.random().toString(36).slice(2,10);
+    const pc=new RTCPeerConnection(ICE);
+    const dc=pc.createDataChannel("game",{ordered:true});
+    G.peers[peerId]={name:"",pc,dc};
+    dc.onmessage=e=>onMsg(e.data,peerId);
+    dc.onopen=()=>updateSlotsUI();
+    pc.oniceconnectionstatechange=()=>{
+      if(pc.iceConnectionState==="connected"||pc.iceConnectionState==="completed"){
+        const n=Object.values(G.peers).filter(p=>p.name).length;
+        setStatus(n+" player"+(n!==1?"s":"")+" in lobby","ok");
+        updateSlotsUI();updatePlayerChips();
+      }
+    };
+    return new Promise(res=>{
+      pc.onicecandidate=e=>{if(!e.candidate){offers.push({peerId,sdp:pc.localDescription});res();}};
+      pc.createOffer().then(o=>pc.setLocalDescription(o));
+    });
+  }));
+
+  // Show PIN immediately — joiner can start connecting while we upload
+  hostPinDisplay.textContent=hostRoomPin;
+  hostPinArea.style.display="";
+  genRoomBtn.disabled=false;genRoomBtn.textContent="🔄 Regenerate PIN";
+  updatePlayerChips();
+
+  // Upload offers to relay (each slot = one message)
+  // We publish them as a JSON bundle on a single topic message for speed
+  const slotsTopic=`skribblr-${hostRoomPin}-slots`;
+  const bundle={v:1,hostName:G.myName,slots:offers};
+  const compressed=await compress(JSON.stringify(bundle));
+
+  try{
+    pinUploadStatus.textContent="Publishing room to relay…";
+    const r=await fetch(`${RELAY}/${slotsTopic}`,{
+      method:"POST",body:compressed,
+      headers:{"Content-Type":"text/plain","X-TTL":"600"},
+      signal:AbortSignal.timeout(10000)
+    });
+    if(r.ok){
+      pinUploadStatus.textContent="✅ Room published! Players can connect now.";
+      setStatus("Share PIN "+hostRoomPin+" — players just type it!","ok");
+    }else{
+      pinUploadStatus.textContent="⚠️ Relay upload failed (code "+r.status+"). Local network only.";
+      setStatus("Share PIN "+hostRoomPin,"ok");
+    }
+  }catch(e){
+    pinUploadStatus.textContent="⚠️ Relay unreachable: "+e.message;
+    setStatus("Share PIN "+hostRoomPin,"ok");
+  }
+
+  // Start polling for joiner answers
+  startHostPoll();
+}
+
+// HOST: poll relay for joiner answers
+function startHostPoll(){
+  clearInterval(hostPollTimer);
+  const answersTopic=`skribblr-${hostRoomPin}-answers`;
+  const since=Date.now();
+
+  let es;
+  try{
+    es=new EventSource(`${RELAY}/${answersTopic}/sse`);
+    es.onmessage=async e=>{try{const d=JSON.parse(e.data);if(d.message)await processAnswer(d.message);}catch{}};
+    es.onerror=()=>{es.close();startHostPollFallback(answersTopic,since);};
+  }catch{startHostPollFallback(answersTopic,since);}
+}
+function startHostPollFallback(topic,since){
+  clearInterval(hostPollTimer);
+  let lastPoll=since;
+  hostPollTimer=setInterval(async()=>{
+    try{
+      const r=await fetch(`${RELAY}/${topic}/json?poll=1&since=${lastPoll}ms`,{signal:AbortSignal.timeout(3000)});
+      if(!r.ok)return;
+      const text=await r.text();lastPoll=Date.now();
+      for(const line of text.trim().split("\n").filter(Boolean)){try{const m=JSON.parse(line);if(m.message)await processAnswer(m.message);}catch{}}
+    }catch{}
+  },1500);
+}
+async function processAnswer(compressed){
+  if(typeof compressed==="string"&&(compressed.startsWith("BUSY:")||compressed.startsWith("OK:")))return;
+  const dedupKey=compressed.slice(0,30);
+  if(appliedAnswers.has(dedupKey))return;
+  appliedAnswers.add(dedupKey);
+  const answersTopic=`skribblr-${hostRoomPin}-answers`;
+  try{
+    const json=await decompress(compressed);
+    const{sdp,peerId,tok}=JSON.parse(json);
+    if(!sdp||!peerId)return;
+    const peer=G.peers[peerId];
+    if(!peer?.pc){if(tok)fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:"BUSY:"+tok,headers:{"Content-Type":"text/plain"}}).catch(()=>{});return;}
+    if(peer.pc.remoteDescription||peer.pc.signalingState==="stable"){if(tok)fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:"BUSY:"+tok,headers:{"Content-Type":"text/plain"}}).catch(()=>{});return;}
+    await peer.pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    if(tok)fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:"OK:"+tok,headers:{"Content-Type":"text/plain"}}).catch(()=>{});
+    updateSlotsUI();updatePlayerChips();
+  }catch(e){console.warn("Answer apply failed:",e.message);}
+}
+function stopHost(){clearInterval(hostPollTimer);}
+
+// ── JOINER: enter PIN, fetch offers, connect ──
+async function joinWithPin(pin){
+  if(pin.length!==6||!/^\d{6}$/.test(pin)){setStatus("Enter a valid 6-digit PIN","err");return;}
+
+  initialBtns.style.display="none";
+  joinSection.style.display="";
+  joinConnecting.style.display="";joinConnected.style.display="none";joinFailed.style.display="none";
+  setStatus("Connecting…","");joinStepMsg.textContent="Fetching room from relay…";
+
+  try{
+    // Fetch the bundle published by host
+    const slotsTopic=`skribblr-${pin}-slots`;
+    joinStepMsg.textContent="Downloading room offers…";
+    let bundle=null;
+
+    // Try fetching recent messages from the topic (last 10 min)
+    const since=Date.now()-600000; // 10 minutes back
+    const r=await fetch(`${RELAY}/${slotsTopic}/json?poll=1&since=${since}ms&limit=1`,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw new Error("Room not found. Check the PIN and try again.");
+    const text=await r.text();
+    const lines=text.trim().split("\n").filter(Boolean);
+    if(!lines.length)throw new Error("Room not found or expired. Ask host to regenerate.");
+
+    // Take the most recent message
+    const lastLine=lines[lines.length-1];
+    const msg=JSON.parse(lastLine);
+    if(!msg.message)throw new Error("Invalid room data.");
+
+    const json=await decompress(msg.message);
+    bundle=JSON.parse(json);
+    if(!bundle?.slots?.length)throw new Error("Invalid room data.");
+
+    joinStepMsg.textContent="Room found! Establishing connection…";
+
+    // From here: same slot-based connection logic as before
+    const myTok=Math.random().toString(36).slice(2,10);
+    const slots=[...bundle.slots];
+    let seed=myTok.split("").reduce((a,c)=>a*31+c.charCodeAt(0),0)>>>0;
+    const rng=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/0x100000000;};
+    for(let i=slots.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[slots[i],slots[j]]=[slots[j],slots[i]];}
+
+    const answersTopic=`skribblr-${pin}-answers`;
+    let connected=false;
+    let busyResolve;
+    let busyPromise=new Promise(r=>busyResolve=r);
+    let es;
+    try{
+      es=new EventSource(`${RELAY}/${answersTopic}/sse`);
+      es.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.message&&d.message.startsWith("BUSY:"+myTok))busyResolve("busy");if(d.message&&d.message.startsWith("OK:"+myTok))busyResolve("ok");}catch{}};
+    }catch{}
+
+    for(let si=0;si<slots.length&&!connected;si++){
+      const slot=slots[si];
+      joinStepMsg.textContent=`Trying slot ${si+1}/${slots.length}…`;
+
+      if(G.peers["host"]?.pc&&G.peers["host"].pc.signalingState!=="closed"){try{G.peers["host"].pc.close();}catch{}}
+      const pc=new RTCPeerConnection(ICE);
+      G.peers["host"]={name:bundle.hostName||"Host",pc,dc:null};
+
+      pc.ondatachannel=e=>{
+        const dc=e.channel;
+        G.peers["host"].dc=dc;
+        dc.onmessage=ev=>onMsg(ev.data,"host");
+        dc.onopen=()=>{
+          connected=true;if(es)es.close();
+          setTimeout(()=>sendToHost({type:"join",name:G.myName}),120);
+          joinConnecting.style.display="none";joinConnected.style.display="";
+          setStatus("Connected! Waiting for host to start…","ok");
+        };
+      };
+      let iceFailed=false;
+      pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==="failed")iceFailed=true;};
+
+      let answerJson;
+      try{
+        answerJson=await new Promise((res,rej)=>{
+          const t=setTimeout(()=>rej(new Error("ICE timeout")),12000);
+          pc.onicecandidate=e=>{if(!e.candidate){clearTimeout(t);res(JSON.stringify({sdp:pc.localDescription,peerId:slot.peerId,tok:myTok}));}};
+          pc.setRemoteDescription(new RTCSessionDescription(slot.sdp)).then(()=>pc.createAnswer()).then(a=>pc.setLocalDescription(a)).catch(rej);
+        });
+      }catch(e){console.warn("Slot"+si+" ICE failed:",e.message);continue;}
+
+      const compressed=await compress(answerJson);
+      try{
+        await fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:compressed,headers:{"Content-Type":"text/plain"},signal:AbortSignal.timeout(8000)});
+      }catch{continue;}
+
+      const result=await Promise.race([
+        new Promise(r=>setTimeout(()=>r("timeout"),8000)),
+        busyPromise,
+        new Promise(r=>{const iv=setInterval(()=>{if(connected){clearInterval(iv);r("connected");}if(iceFailed){clearInterval(iv);r("failed");}},200);})
+      ]);
+      if(result==="connected")break;
+      busyPromise=new Promise(r=>busyResolve=r);
+    }
+
+    if(!connected){if(es)es.close();throw new Error("All slots busy. Ask host to regenerate the PIN.");}
+  }catch(e){
+    console.error("Join failed",e);
+    joinConnecting.style.display="none";joinFailed.style.display="";
+    joinFailMsg.textContent=e.message||"Connection failed — try again";
+    setStatus("Connection failed","err");
+  }
+}
+
+// ── BUTTON HANDLERS ──
+createBtn.addEventListener("click",()=>{
+  const name=nameInput.value.trim();if(!name){setStatus("Enter your name first","err");return;}
+  G.myName=name;G.isHost=true;G.myId="host";
+  createBtn.disabled=true;joinBtn.disabled=true;
+  initialBtns.style.display="none";hostSection.style.display="";
+  initPlayer("host",name);setStatus("Click Generate to create your room PIN","");updatePlayerChips();
+});
+joinBtn.addEventListener("click",()=>{
+  const name=nameInput.value.trim();if(!name){setStatus("Enter your name first","err");return;}
+  const pin=getEnteredPin();if(pin.length!==6){setStatus("Enter the full 6-digit PIN","err");pinInputs[pin.length]?.focus();return;}
+  G.myName=name;G.isHost=false;
+  createBtn.disabled=true;joinBtn.disabled=true;
+  joinWithPin(pin);
+});
+genRoomBtn.addEventListener("click",()=>{
+  G.totalRounds=parseInt(roundsInput.value)||3;
+  G.maxTime=parseInt($("timer-input").value)||80;
+  openLobby();
+});
+hostPinDisplay.addEventListener("click",()=>{
+  navigator.clipboard.writeText(hostRoomPin).then(()=>toast("PIN copied!","success")).catch(()=>{});
+});
+startGameBtn.addEventListener("click",()=>{
+  const conn=Object.keys(G.peers).filter(id=>G.peers[id].name&&G.peers[id].dc&&G.peers[id].dc.readyState==="open");
+  if(!conn.length){setStatus("No players connected yet","err");return;}
+  stopHost();
+  G.turnOrder=shuffle(["host",...conn]);G.turnIndex=0;G.currentRound=1;
+  const init={type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:1,maxTime:G.maxTime,
+    peerMap:Object.fromEntries(conn.map(id=>[id,{name:G.peers[id].name}])),hostName:G.myName};
+  for(const id of conn)sendTo(id,{...init,yourId:id});
+  applyGameInit(init);beginTurn();
+});
+joinRetryBtn.addEventListener("click",()=>{
+  joinFailed.style.display="none";initialBtns.style.display="";joinSection.style.display="none";
+  createBtn.disabled=false;joinBtn.disabled=false;pinInputs.forEach(el=>{el.value="";el.classList.remove("filled");});
+  setStatus("Enter the PIN again and click Join","");
+});
+
+function updateSlotsUI(){if(!slotsGrid)return;slotsGrid.innerHTML="";for(const[,p]of Object.entries(G.peers)){if(!p.name)continue;const div=document.createElement("div");div.style.cssText="display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;font-weight:700;";div.innerHTML='<div style="width:8px;height:8px;border-radius:50%;background:var(--accent3)"></div>'+esc(p.name);slotsGrid.appendChild(div);}}
+
+// ── PLAYER TRACKING ──
+function initPlayer(id,name){G.auth[id]={score:0,guessedThisRound:false,roundPts:0};G.disp[id]={name,score:0,guessedThisRound:false};}
+function broadcastPlayerList(){broadcast({type:"player-list",players:[{id:"host",name:G.myName},...Object.entries(G.peers).map(([id,p])=>({id,name:p.name}))]});}
+function applyPlayerList(players){for(const p of players){if(p.id===G.myId)continue;if(!G.peers[p.id])G.peers[p.id]={name:p.name,pc:null,dc:null};G.peers[p.id].name=p.name;if(!G.disp[p.id])G.disp[p.id]={name:p.name,score:0,guessedThisRound:false};}}
+
+// ── MESSAGE HANDLER ──
+function onMsg(raw,fromId){
+  let msg;try{msg=JSON.parse(raw);}catch{return;}
+  if(G.isHost){
+    switch(msg.type){
+      case "draw-relay":broadcast({...msg,type:"draw"},fromId);renderDraw(msg);return;
+      case "clear-relay":broadcast({type:"clear"},fromId);clearCanvas();return;
+      case "fill-relay":broadcast({...msg,type:"fill"},fromId);renderFill(msg);return;
+      case "undo-relay":broadcast({...msg,type:"undo"},fromId);applyUndo(msg);return;
+      case "hint-relay":broadcast({...msg,type:"word-hint"},fromId);applyHint(msg);return;
+      case "word-chosen-relay":{const wc={...msg,type:"word-chosen"};broadcast(wc,fromId);applyWordChosen(wc);return;}
+      case "chat":
+        if(msg.isGuess&&G.currentWord){if(!checkGuess(msg.text,fromId,msg.name)){broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,isClose(msg.text));if(isClose(msg.text))sendTo(fromId,{type:"close-notice"});}}
+        else{broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,false);}return;
+      case "join":
+        G.peers[fromId].name=msg.name;initPlayer(fromId,msg.name);
+        updatePlayerChips();updateSlotsUI();broadcastPlayerList();
+        if(gameScreen.classList.contains("active")){sendTo(fromId,{type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:G.currentRound,peerMap:Object.fromEntries(Object.entries(G.peers).filter(([id])=>id!==fromId).map(([id,p])=>[id,{name:p.name}])),hostName:G.myName,yourId:fromId,lateJoin:true});}
+        addSystem(`${esc(msg.name)} joined!`);
+        setStatus(`${Object.values(G.peers).filter(p=>p.name).length+1} player(s) in lobby`,"ok");
+        setTimeout(()=>broadcastState(),200);return;
+    }
+  }
+  switch(msg.type){
+    case "game-init":applyGameInit(msg);break;
+    case "draw":renderDraw(msg);break;
+    case "clear":clearCanvas();break;
+    case "fill":renderFill(msg);break;
+    case "undo":applyUndo(msg);break;
+    case "chat":if(msg.name!==G.myName)addChat(msg.name,msg.text,false,false,false);break;
+    case "word-hint":applyHint(msg);break;
+    case "word-chosen":applyWordChosen(msg);break;
+    case "correct-guess":applyCorrectGuess(msg);break;
+    case "round-end":applyRoundEnd(msg);break;
+    case "game-end":showGameEnd(msg.scores);break;
+    case "next-turn":applyNextTurn(msg);break;
+    case "close-notice":addSystem("Very close! 🔥");break;
+    case "player-list":applyPlayerList(msg.players);break;
+    case "score-update":G.disp=msg.disp;if(G.disp[G.myId])G.guessedThisRound=G.disp[G.myId].guessedThisRound;updateScoreboard();if(G.guessedThisRound&&!G.canDraw){chatInput.disabled=true;sendBtn.disabled=true;chatInput.placeholder="You already guessed correctly!";}break;
+    case "ROUND_SYNC":G.canDraw=(msg.drawer===G.myId);applyRoundSync(msg);break;
+    case "you-draw":G.currentDrawer=G.myId;G.currentRound=msg.round;G.canDraw=true;G.guessedThisRound=false;G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";G.endTurnCalled=false;clearCanvas();wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent="";updateDrawerUI();roundLabel.textContent=G.currentRound;showWordChoice();break;
+  }
+}
+
+// ── GAME INIT ──
+function applyGameInit(msg){
+  G.turnOrder=msg.turnOrder;G.totalRounds=msg.totalRounds;G.currentRound=msg.round;
+  if(msg.maxTime)G.maxTime=msg.maxTime;
+  if(!G.isHost&&msg.yourId)G.myId=msg.yourId;
+  if(msg.peerMap){for(const[id,pd]of Object.entries(msg.peerMap)){if(!G.peers[id])G.peers[id]={name:pd.name,pc:null,dc:null};else G.peers[id].name=pd.name;if(!G.disp[id])G.disp[id]={name:pd.name,score:0,guessedThisRound:false};}}
+  if(!G.isHost){if(!G.disp["host"])G.disp["host"]={name:msg.hostName||"Host",score:0,guessedThisRound:false};if(!G.disp[G.myId])G.disp[G.myId]={name:G.myName,score:0,guessedThisRound:false};}
+  if(!msg.lateJoin)showGameScreen();
+}
+function showGameScreen(){
+  lobbyScreen.classList.remove("active");gameScreen.classList.add("active");
+  roundLabel.textContent=G.currentRound;totalRoundsLabel.textContent=G.totalRounds;
+  resizeCanvas();window.addEventListener("resize",resizeCanvas);
+  updateScoreboard();addSystem("Game started! Good luck! 🎨");
+}
+
+// ── TURN MANAGEMENT ──
+function beginTurn(){
+  G.guessedThisRound=false;G.endTurnCalled=false;G.guessCount=0;
+  G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";clearCanvas();
+  for(const id of Object.keys(G.auth)){G.auth[id].guessedThisRound=false;G.auth[id].roundPts=0;}
+  for(const id of Object.keys(G.disp))G.disp[id].guessedThisRound=false;
+  const drawerId=G.turnOrder[G.turnIndex];G.currentDrawer=drawerId;G.canDraw=(drawerId===G.myId);
+  wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent="";
+  broadcastState();pushScores();updateDrawerUI();updateScoreboard();
+  if(drawerId===G.myId){showWordChoice();}
+  else{const name=nameOf(drawerId);sendTo(drawerId,{type:"you-draw",round:G.currentRound});for(const[id]of Object.entries(G.peers))if(id!==drawerId)sendTo(id,{type:"next-turn",drawer:drawerId,drawerName:name,round:G.currentRound});showWaitingUI(name);}
+}
+function applyNextTurn(msg){
+  G.currentDrawer=msg.drawer;G.currentRound=msg.round;G.canDraw=(msg.drawer===G.myId);
+  G.guessedThisRound=false;G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";G.endTurnCalled=false;
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+  wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent="";updateDrawerUI();
+  roundLabel.textContent=G.currentRound;updateScoreboard();
+  if(msg.drawer===G.myId)showWordChoice();else showWaitingUI(msg.drawerName);
+}
+
+// ── WORD CHOICE ──
+let wordChoiceTimer=null;
+function showWordChoice(){
+  clearTimeout(wordChoiceTimer);const ch=pickWords();
+  wordChoiceOverlay.style.display="";wordChoicesEl.innerHTML="";
+  const bar=document.createElement("div");bar.style.cssText="height:4px;background:var(--accent);border-radius:2px;margin-bottom:.6rem;width:100%;transition:width 1s linear;";wordChoicesEl.appendChild(bar);
+  const lbl=document.createElement("div");lbl.style.cssText="font-size:.72rem;color:var(--text-muted);text-align:center;margin-bottom:.4rem;";lbl.textContent="Auto-selecting in 10s...";wordChoicesEl.appendChild(lbl);
+  for(const w of ch){const btn=document.createElement("button");btn.className="word-choice-btn";btn.innerHTML=`<span>${esc(w.word)}</span><span class="diff-badge ${w.difficulty}">${w.difficulty} · ${w.score}pt</span>`;btn.addEventListener("click",()=>{clearTimeout(wordChoiceTimer);chooseWord(w);});wordChoicesEl.appendChild(btn);}
+  requestAnimationFrame(()=>{bar.style.width="0%";});
+  let t=10;const tick=setInterval(()=>{t--;lbl.textContent="Auto-selecting in "+t+"s...";if(t<=0)clearInterval(tick);},1000);
+  wordChoiceTimer=setTimeout(()=>{clearInterval(tick);chooseWord(ch[0]);},10000);
+}
+function chooseWord(w){
+  wordChoiceOverlay.style.display="none";G.currentWord=w;G.currentWordMasked=buildMask(w.word);G.currentCategory=w.category||"";
+  const msg={type:G.isHost?"word-chosen":"word-chosen-relay",masked:G.currentWordMasked,word:w.word,wordLen:w.word.length,category:G.currentCategory,drawer:G.currentDrawer,drawerName:nameOf(G.currentDrawer)};
+  if(G.isHost){broadcast(msg);applyWordChosen(msg);}else{sendToHost(msg);applyWordChosen({...msg,type:"word-chosen"});}
+}
+function applyWordChosen(msg){
+  G.currentWordMasked=Array.isArray(msg.masked)?[...msg.masked]:buildMask("_".repeat(msg.wordLen||0));
+  G.currentDrawer=msg.drawer;G.currentCategory=msg.category||"";G.revealedIndices=new Set();
+  if(msg.word&&G.isHost){const wd=G.words.find(w=>w.word.toLowerCase()===msg.word.toLowerCase());G.currentWord=wd||{word:msg.word,category:msg.category||"",score:msg.score||100,difficulty:msg.difficulty||"easy"};}
+  updateWordDisplay(G.currentWordMasked,G.currentCategory);updateDrawerUI();startTimer();
+  if(!G.canDraw&&!G.guessedThisRound){chatInput.disabled=false;sendBtn.disabled=false;chatInput.placeholder="Type your guess...";}
+  if(G.isHost)broadcastState();
+}
+function buildMask(w){return w.split("").map(c=>c===" "?" ":"_");}
+function updateWordDisplay(masked,cat){
+  if(!Array.isArray(masked)||!masked.length){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=cat?"Category: "+cat:"";return;}
+  wordDisplayEl.innerHTML=masked.map((c,i)=>{if(c===" ")return'<span class="letter-blank">&nbsp;&nbsp;</span>';const isRevealed=G.revealedIndices.has(i);let ch=c;if(G.canDraw&&G.currentWord)ch=G.currentWord.word[i];return`<span class="letter-blank${isRevealed?" revealed":""}">${esc(ch)}</span>`;}).join("");
+  if(G.canDraw&&G.currentWord)wordDisplayEl.innerHTML+=` <small style="color:var(--accent3);font-size:.7rem;">(${esc(G.currentWord.word)})</small>`;
+  const safeCat=(cat&&cat!=="undefined")?cat:"";wordCategoryEl.textContent=safeCat?"Category: "+safeCat:"";
+}
+function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";toolbar.style.display="none";canvas.classList.add("not-drawer");}
+function updateDrawerUI(){
+  if(G.currentDrawer===G.myId){drawerNameEl.textContent=G.myName+" (you)";canvas.classList.remove("not-drawer");toolbar.style.display="";}
+  else{drawerNameEl.textContent=nameOf(G.currentDrawer)||"?";canvas.classList.add("not-drawer");toolbar.style.display="none";}
+  chatInput.disabled=G.canDraw;sendBtn.disabled=G.canDraw;
+  if(G.canDraw)chatInput.placeholder="You are drawing!";else if(G.guessedThisRound)chatInput.placeholder="You already guessed!";else chatInput.placeholder="Type your guess...";
+}
+
+// ── HINTS ──
+function revealLetter(){
+  if(!G.currentWord||G.currentDrawer!==G.myId)return;
+  const word=G.currentWord.word;
+  const unrev=word.split("").map((_,i)=>i).filter(i=>word[i]!==" "&&!G.revealedIndices.has(i)&&G.currentWordMasked[i]==="_");
+  if(!unrev.length)return;
+  const idx=unrev[0|Math.random()*unrev.length];G.revealedIndices.add(idx);
+  G.currentWordMasked=G.currentWordMasked.map((c,i)=>G.revealedIndices.has(i)?word[i]:c);
+  updateWordDisplay(G.currentWordMasked,G.currentWord.category||"");
+  const hm={type:G.isHost?"word-hint":"hint-relay",masked:G.currentWordMasked,revealedIdx:idx,category:G.currentWord.category||""};
+  if(G.isHost){broadcast(hm);broadcastState();}else sendToHost(hm);
+}
+function applyHint(msg){G.currentWordMasked=[...msg.masked];if(msg.revealedIdx!=null)G.revealedIndices.add(msg.revealedIdx);const cat=msg.category||G.currentCategory||"";G.currentCategory=cat;updateWordDisplay(G.currentWordMasked,cat);}
+
+// ── TIMER ──
+function startTimer(){
+  clearInterval(G.timerInterval);G.timeLeft=G.maxTime;renderTimer();
+  let hints=0;const hintAt=[Math.floor(G.maxTime*.6),Math.floor(G.maxTime*.3)];
+  G.timerInterval=setInterval(()=>{G.timeLeft--;renderTimer();if(G.currentDrawer===G.myId&&hints<hintAt.length&&G.timeLeft<=hintAt[hints]){revealLetter();hints++;}if(G.timeLeft<=0){clearInterval(G.timerInterval);if(G.isHost)endTurn(false);}},1000);
+}
+function renderTimer(){
+  timerNum.textContent=G.timeLeft;const pct=G.timeLeft/G.maxTime,circ=2*Math.PI*22;
+  timerFg.style.strokeDashoffset=circ*(1-pct);timerFg.style.stroke=pct>.5?"#6bcb77":pct>.25?"#ffd93d":"#ff6b6b";
+}
+
+// ── SCORING ──
+function calcPts(base,tl,mt,order){return Math.max(10,Math.round(base*Math.max(.3,1-order*.15)*(.4+.6*tl/mt)));}
+function checkGuess(text,fromId,fromName){
+  if(!G.currentWord)return false;if(fromId===G.currentDrawer)return false;
+  const a=G.auth[fromId];if(!a||a.guessedThisRound)return false;
+  if(text.trim().toLowerCase()!==G.currentWord.word.toLowerCase())return false;
+  const pts=calcPts(G.currentWord.score,G.timeLeft,G.maxTime,G.guessCount++);
+  a.score+=pts;a.guessedThisRound=true;a.roundPts=pts;G.disp[fromId].score=a.score;G.disp[fromId].guessedThisRound=true;
+  const gName=fromId==="host"?G.myName:(fromName||nameOf(fromId));
+  const cMsg={type:"correct-guess",guesser:fromId,guesserName:gName,pts};
+  broadcast(cMsg);applyCorrectGuess(cMsg);pushScores();broadcastState();
+  const nonDrawers=G.turnOrder.filter(id=>id!==G.currentDrawer);
+  if(nonDrawers.every(id=>G.auth[id]?.guessedThisRound))setTimeout(()=>endTurn(true),800);
+  return true;
+}
+function applyCorrectGuess(msg){
+  if(msg.guesser===G.myId){G.guessedThisRound=true;chatInput.disabled=true;sendBtn.disabled=true;chatInput.placeholder="You already guessed!";toast("You got it! +"+msg.pts+" pts","success",4000);}
+  addSystem(`✅ ${esc(msg.guesserName)} guessed it! +${msg.pts} pts`);updateScoreboard();
+}
+function endTurn(allGuessed){
+  if(!G.isHost||G.endTurnCalled)return;G.endTurnCalled=true;clearInterval(G.timerInterval);
+  const da=G.auth[G.currentDrawer];if(da){let tot=0;for(const[id,a]of Object.entries(G.auth))if(id!==G.currentDrawer)tot+=a.roundPts||0;const bonus=Math.round(tot/2);if(bonus>0){da.score+=bonus;da.roundPts=bonus;G.disp[G.currentDrawer].score=da.score;}}
+  pushScores();broadcastState();
+  const roundPts={};for(const[id,a]of Object.entries(G.auth))if((a.roundPts||0)>0)roundPts[id]=a.roundPts;
+  const msg={type:"round-end",word:G.currentWord?.word||"?",roundPts,drawer:G.currentDrawer,allGuessed};
+  broadcast(msg);applyRoundEnd(msg);
+}
+function applyRoundEnd(msg){clearInterval(G.timerInterval);wordDisplayEl.textContent=msg.word;wordCategoryEl.textContent="The word was:";showRoundEnd(msg);}
+function showRoundEnd(msg){
+  roundEndWordEl.textContent=msg.word;
+  roundEndTitle.textContent=msg.allGuessed?"🎉 Everyone guessed it!":"⏰ Time's up!";
+  roundScoresList.innerHTML="";
+  const entries=Object.entries(msg.roundPts||{}).map(([id,pts])=>({name:nameOf(id),pts,isDrawer:id===msg.drawer})).filter(e=>e.pts>0).sort((a,b)=>b.pts-a.pts);
+  for(const e of entries){const r=document.createElement("div");r.className="round-score-row";r.innerHTML=`<span>${esc(e.name)}${e.isDrawer?" ✏️":""}</span><span class="pts">+${e.pts}</span>`;roundScoresList.appendChild(r);}
+  if(!roundScoresList.children.length)roundScoresList.innerHTML='<div style="color:var(--text-muted);text-align:center">No points this round</div>';
+  roundEndOverlay.style.display="";
+  setTimeout(()=>{roundEndOverlay.style.display="none";if(G.isHost)advanceTurn();},4500);
+}
+function advanceTurn(){G.turnIndex++;if(G.turnIndex>=G.turnOrder.length){G.turnIndex=0;G.currentRound++;if(G.currentRound>G.totalRounds){endGame();return;}roundLabel.textContent=G.currentRound;}beginTurn();}
+function endGame(){pushScores();const scores=Object.entries(G.disp).map(([id,d])=>({id,name:d.name,score:d.score})).sort((a,b)=>b.score-a.score);broadcast({type:"game-end",scores});showGameEnd(scores);}
+function showGameEnd(scores){clearInterval(G.timerInterval);const medals=["🥇","🥈","🥉"];leaderboardList.innerHTML=scores.map((s,i)=>`<div class="lb-row"><div class="lb-rank">${medals[i]||i+1}</div><div class="lb-name">${esc(s.name)}${s.id===G.myId?' <span style="color:var(--text-muted)">(you)</span>':""}</div><div class="lb-pts">${s.score} pts</div></div>`).join("");gameEndOverlay.style.display="";}
+playAgainBtn.addEventListener("click",()=>location.reload());
+
+// ── GUESSING ──
+function isClose(t){if(!G.currentWord)return false;const g=t.trim().toLowerCase(),w=G.currentWord.word.toLowerCase();return lev(g,w)<=2&&g!==w;}
+function submitGuess(){
+  const text=chatInput.value.trim();if(!text||G.canDraw||G.guessedThisRound)return;chatInput.value="";
+  if(G.isHost){const correct=checkGuess(text,"host",G.myName);if(correct){addChat(G.myName,text,true,false,false);}else{const chatMsg={type:"chat",name:G.myName,text,isGuess:true};broadcast(chatMsg);const cl=isClose(text);addChat(G.myName,text,true,false,cl);if(cl)addSystem("Very close! 🔥");}}
+  else{sendToHost({type:"chat",name:G.myName,text,isGuess:true});const looksCorrect=G.currentWord&&text.trim().toLowerCase()===G.currentWord.word.toLowerCase();if(!looksCorrect)addChat(G.myName,text,true,false,isClose(text));}
+}
+chatInput.addEventListener("keydown",e=>{if(e.key==="Enter")submitGuess();});
+sendBtn.addEventListener("click",submitGuess);
+function addChat(name,text,isOwn,isCorr,isCloseF){const d=document.createElement("div");d.className=`chat-msg${isOwn?" own":""}${isCorr?" correct":""}${isCloseF?" close":""}`;d.innerHTML=`<span class="sender">${esc(name)}:</span> ${esc(text)}`;chatMessages.appendChild(d);chatMessages.scrollTop=chatMessages.scrollHeight;}
+function addSystem(text){const d=document.createElement("div");d.className="chat-msg system";d.innerHTML=text;chatMessages.appendChild(d);chatMessages.scrollTop=chatMessages.scrollHeight;}
+
+// ── CANVAS ──
+function resizeCanvas(){const wp=canvas.parentElement,maxW=wp.clientWidth-32,maxH=wp.clientHeight-32;let w=maxW,h=w*3/4;if(h>maxH){h=maxH;w=h*4/3;}const old=(canvas.width>0)?ctx.getImageData(0,0,canvas.width,canvas.height):null;canvas.width=0|w;canvas.height=0|h;ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);if(old){try{ctx.putImageData(old,0,0);}catch{}}}
+function getPos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+function drawLine(x1,y1,x2,y2,col,sz,er){ctx.beginPath();ctx.strokeStyle=er?"#fff":col;ctx.lineWidth=er?sz*3:sz;ctx.lineCap=ctx.lineJoin="round";ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function clearCanvas(){ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);}
+function renderDraw(m){drawLine(m.x1*canvas.width,m.y1*canvas.height,m.x2*canvas.width,m.y2*canvas.height,m.color,m.size,m.eraser);}
+function bcastDraw(x1,y1,x2,y2){const m={type:G.isHost?"draw":"draw-relay",x1:+(x1/canvas.width).toFixed(4),y1:+(y1/canvas.height).toFixed(4),x2:+(x2/canvas.width).toFixed(4),y2:+(y2/canvas.height).toFixed(4),color:G.currentColor,size:G.brushSize,eraser:G.isEraserActive};if(G.isHost)broadcast(m);else sendToHost(m);}
+
+const undoStack=[],redoStack=[],MAX_UNDO=30;
+function saveSnapshot(){undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));if(undoStack.length>MAX_UNDO)undoStack.shift();redoStack.length=0;updateUndoButtons();}
+function updateUndoButtons(){const ub=$("undo-btn"),rb=$("redo-btn");if(ub)ub.style.opacity=undoStack.length>0?"1":"0.35";if(rb)rb.style.opacity=redoStack.length>0?"1":"0.35";}
+function doUndo(){if(!G.canDraw||!undoStack.length)return;redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));const snap=undoStack.pop();ctx.putImageData(snap,0,0);updateUndoButtons();broadcastCanvasSnapshot();}
+function doRedo(){if(!G.canDraw||!redoStack.length)return;undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));const snap=redoStack.pop();ctx.putImageData(snap,0,0);updateUndoButtons();broadcastCanvasSnapshot();}
+function broadcastCanvasSnapshot(){const dataUrl=canvas.toDataURL("image/jpeg",0.6);const m={type:G.isHost?"undo":"undo-relay",dataUrl};if(G.isHost)broadcast(m);else sendToHost(m);}
+function applyUndo(msg){if(!msg.dataUrl)return;const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=msg.dataUrl;}
+
+document.addEventListener("keydown",e=>{if(!G.canDraw)return;const ctrl=e.ctrlKey||e.metaKey;if(ctrl&&e.key==="z"&&!e.shiftKey){e.preventDefault();doUndo();}if(ctrl&&(e.key==="y"||(e.key==="z"&&e.shiftKey))){e.preventDefault();doRedo();}});
+
+canvas.addEventListener("mousedown",e=>{if(!G.canDraw)return;const p=getPos(e);if(G.isBucketActive){saveSnapshot();floodFill(p.x,p.y,G.currentColor);bcastFill(p.x,p.y);return;}saveSnapshot();G.isDrawing=true;G.lastX=p.x;G.lastY=p.y;drawLine(p.x,p.y,p.x,p.y,G.currentColor,G.brushSize,G.isEraserActive);bcastDraw(p.x,p.y,p.x,p.y);});
+canvas.addEventListener("mousemove",e=>{if(!G.canDraw||!G.isDrawing)return;const p=getPos(e);drawLine(G.lastX,G.lastY,p.x,p.y,G.currentColor,G.brushSize,G.isEraserActive);bcastDraw(G.lastX,G.lastY,p.x,p.y);G.lastX=p.x;G.lastY=p.y;});
+canvas.addEventListener("mouseup",()=>G.isDrawing=false);
+canvas.addEventListener("mouseleave",()=>G.isDrawing=false);
+canvas.addEventListener("touchstart",e=>{e.preventDefault();if(!G.canDraw)return;const p=getPos(e.touches[0]);if(G.isBucketActive){saveSnapshot();floodFill(p.x,p.y,G.currentColor);bcastFill(p.x,p.y);return;}saveSnapshot();G.isDrawing=true;G.lastX=p.x;G.lastY=p.y;drawLine(p.x,p.y,p.x,p.y,G.currentColor,G.brushSize,G.isEraserActive);bcastDraw(p.x,p.y,p.x,p.y);},{passive:false});
+canvas.addEventListener("touchmove",e=>{e.preventDefault();if(!G.canDraw||!G.isDrawing)return;const p=getPos(e.touches[0]);drawLine(G.lastX,G.lastY,p.x,p.y,G.currentColor,G.brushSize,G.isEraserActive);bcastDraw(G.lastX,G.lastY,p.x,p.y);G.lastX=p.x;G.lastY=p.y;},{passive:false});
+canvas.addEventListener("touchend",()=>G.isDrawing=false);
+
+// ── TOOLBAR ──
+const COLORS=["#000000","#ffffff","#ff6b6b","#ffd93d","#6bcb77","#4d96ff","#c77dff","#f77f00","#023e8a","#80b918","#e63946","#457b9d","#ffb703","#8338ec","#06d6a0","#ef476f","#073b4c","#adb5bd"];
+for(const c of COLORS){const sw=document.createElement("div");sw.className="color-swatch"+(c==="#000000"?" active":"");sw.style.background=c;sw.title=c;sw.addEventListener("click",()=>{document.querySelectorAll(".color-swatch").forEach(s=>s.classList.remove("active"));sw.classList.add("active");G.currentColor=c;G.isEraserActive=false;$("eraser-btn").classList.remove("active");});$("colors").appendChild(sw);}
+[3,6,12,24].forEach((s,i)=>{const btn=document.createElement("button");btn.className="size-btn"+(i===1?" active":"");btn.title="Size "+s;btn.innerHTML=`<div class="dot" style="width:${Math.min(s,18)}px;height:${Math.min(s,18)}px"></div>`;btn.addEventListener("click",()=>{document.querySelectorAll(".size-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");G.brushSize=s;});$("brush-sizes").appendChild(btn);});
+$("eraser-btn").addEventListener("click",function(){G.isEraserActive=!G.isEraserActive;G.isBucketActive=false;this.classList.toggle("active",G.isEraserActive);$("bucket-btn").classList.remove("active");});
+$("bucket-btn").addEventListener("click",function(){G.isBucketActive=!G.isBucketActive;G.isEraserActive=false;this.classList.toggle("active",G.isBucketActive);$("eraser-btn").classList.remove("active");});
+$("undo-btn").addEventListener("click",()=>doUndo());
+$("redo-btn").addEventListener("click",()=>doRedo());
+$("clear-btn").addEventListener("click",()=>{if(!G.canDraw)return;saveSnapshot();clearCanvas();redoStack.length=0;updateUndoButtons();const m={type:G.isHost?"clear":"clear-relay"};if(G.isHost)broadcast(m);else sendToHost(m);});
+
+// ── FLOOD FILL ──
+function floodFill(startX,startY,fillColor){
+  startX=Math.round(startX);startY=Math.round(startY);
+  const w=canvas.width,h=canvas.height,imageData=ctx.getImageData(0,0,w,h),data=imageData.data;
+  const idx=(x,y)=>(y*w+x)*4;const si=idx(startX,startY);
+  const tr=data[si],tg=data[si+1],tb=data[si+2],ta=data[si+3];
+  const tmp=document.createElement("canvas");tmp.width=tmp.height=1;const tc=tmp.getContext("2d");tc.fillStyle=fillColor;tc.fillRect(0,0,1,1);const fc=tc.getImageData(0,0,1,1).data;const fr=fc[0],fg=fc[1],fb=fc[2];
+  if(tr===fr&&tg===fg&&tb===fb)return;
+  const match=i=>(Math.abs(data[i]-tr)<16&&Math.abs(data[i+1]-tg)<16&&Math.abs(data[i+2]-tb)<16&&Math.abs(data[i+3]-ta)<16);
+  const stack=[startX+startY*w];const visited=new Uint8Array(w*h);
+  while(stack.length){const pos=stack.pop();const x=pos%w,y=(pos/w)|0;const i=idx(x,y);if(visited[pos]||!match(i))continue;visited[pos]=1;data[i]=fr;data[i+1]=fg;data[i+2]=fb;data[i+3]=255;if(x>0)stack.push(pos-1);if(x<w-1)stack.push(pos+1);if(y>0)stack.push(pos-w);if(y<h-1)stack.push(pos+w);}
+  ctx.putImageData(imageData,0,0);
+}
+function bcastFill(x,y){const m={type:G.isHost?"fill":"fill-relay",x:+(x/canvas.width).toFixed(4),y:+(y/canvas.height).toFixed(4),color:G.currentColor};if(G.isHost)broadcast(m);else sendToHost(m);}
+function renderFill(m){floodFill(m.x*canvas.width,m.y*canvas.height,m.color);}
+
+// ── SCOREBOARD ──
+function updatePlayerChips(){
+  playerChips.innerHTML="";
+  const s=document.createElement("div");s.className="player-chip host";s.innerHTML=`<div class="dot"></div>${esc(G.myName||"You")} (host)`;playerChips.appendChild(s);
+  for(const[,p]of Object.entries(G.peers)){if(!p.name)continue;const c=document.createElement("div");c.className="player-chip";c.innerHTML=`<div class="dot"></div>${esc(p.name)}`;playerChips.appendChild(c);}
+}
+function updateScoreboard(){
+  const all=Object.entries(G.disp).map(([id,d])=>({id,name:d.name,score:d.score,isDrawing:G.currentDrawer===id,guessed:d.guessedThisRound,isMe:id===G.myId})).sort((a,b)=>b.score-a.score);
+  const medals=["gold","silver","bronze"];
+  scoreList.innerHTML=all.map((p,i)=>`<div class="score-item${p.isDrawing?" drawing":""}${p.guessed?" guessed":""}"><div class="score-rank ${medals[i]||""}">${i+1}</div><div class="score-name">${esc(p.name)}${p.isDrawing?" ✏️":""}${p.isMe?' <span style="font-size:.6rem;color:var(--text-muted)">(you)</span>':""}</div><div class="score-pts">${p.score}</div></div>`).join("");
+}
+
+updatePlayerChips();
+}); // DOMContentLoaded
+</script>
+</body>
+</html>
