@@ -6,6 +6,8 @@
   <title>G Skribblr na</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- PeerJS: replaces ntfy.sh for signaling — no CORS, no rate limits -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
   <style>
     /* ── RESET & VARS ── */
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -49,28 +51,13 @@
     .status-msg.ok{color:var(--accent3);} .status-msg.err{color:var(--accent);}
 
     /* ── PIN INPUT ── */
-    .pin-display{
-      display:flex;justify-content:center;gap:.5rem;margin:.6rem 0;
-    }
-    .pin-digit{
-      width:52px;height:64px;background:var(--surface2);border:2px solid var(--border);
-      border-radius:10px;font-family:'Fredoka One',cursive;font-size:2rem;
-      color:var(--accent2);text-align:center;outline:none;caret-color:var(--accent4);
-      transition:border-color .15s,box-shadow .15s;
-    }
+    .pin-display{display:flex;justify-content:center;gap:.5rem;margin:.6rem 0;}
+    .pin-digit{width:52px;height:64px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;font-family:'Fredoka One',cursive;font-size:2rem;color:var(--accent2);text-align:center;outline:none;caret-color:var(--accent4);transition:border-color .15s,box-shadow .15s;}
     .pin-digit:focus{border-color:var(--accent4);box-shadow:0 0 0 3px rgba(77,150,255,.2);}
     .pin-digit.filled{border-color:var(--accent2);color:var(--accent2);}
-    .room-pin-big{
-      font-family:'Fredoka One',cursive;font-size:3rem;letter-spacing:.6rem;
-      color:var(--accent2);text-align:center;
-      background:var(--surface2);border:2px dashed var(--accent2);
-      border-radius:var(--radius);padding:.7rem 1.2rem;margin:.3rem 0;
-      cursor:pointer;user-select:all;transition:background .15s;
-    }
+    .room-pin-big{font-family:'Fredoka One',cursive;font-size:3rem;letter-spacing:.6rem;color:var(--accent2);text-align:center;background:var(--surface2);border:2px dashed var(--accent2);border-radius:var(--radius);padding:.7rem 1.2rem;margin:.3rem 0;cursor:pointer;user-select:all;transition:background .15s;}
     .room-pin-big:hover{background:rgba(255,217,61,.07);}
     .room-pin-hint{font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:-.2rem;margin-bottom:.6rem;}
-    .pin-join-row{display:flex;gap:.5rem;align-items:flex-end;}
-    .pin-join-row .pin-display{flex:1;justify-content:flex-start;}
 
     /* ── PLAYER CHIPS ── */
     .players-list{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0;}
@@ -82,7 +69,6 @@
     .join-status-card{text-align:center;padding:1.2rem 0;}
     .join-spinner{font-size:1.8rem;animation:spin 1.2s linear infinite;display:inline-block;}
     @keyframes spin{to{transform:rotate(360deg);}}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
     /* ── GAME HEADER ── */
     .game-header{display:grid;grid-template-columns:1fr auto auto 1fr;align-items:center;gap:.5rem;background:var(--surface);border-bottom:1px solid var(--border);padding:.5rem 1rem;}
@@ -183,6 +169,9 @@
 
     /* ── MISC ── */
     .room-flow{display:flex;flex-direction:column;gap:.75rem;margin-top:1rem;}
+    .peer-status{font-size:.72rem;color:var(--text-muted);text-align:center;padding:.3rem;border-radius:6px;background:var(--surface2);}
+    .peer-status.ok{color:var(--accent3);}
+    .peer-status.err{color:var(--accent);}
 
     /* ── RESPONSIVE ── */
     @media(max-width:700px){
@@ -198,7 +187,7 @@
 <!-- ═══ LOBBY ═══ -->
 <div id="lobby-screen" class="screen">
   <div>
-    <div class="logo"><h1>G Skribbl na</h1><p>Draw &bull; Guess &bull; Win</p></div>
+    <div class="logo"><h1>G Skribblr na</h1><p>Draw &bull; Guess &bull; Win</p></div>
     <div class="lobby-card">
       <h2>Enter the Room</h2>
 
@@ -212,7 +201,6 @@
         <button id="create-btn" class="btn btn-primary" style="width:100%;">🎨 Create a Room</button>
         <div class="divider">or join with a PIN</div>
 
-        <!-- 6-digit PIN input -->
         <div style="margin-bottom:.5rem;">
           <div style="font-size:.78rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Room PIN (6 digits)</div>
           <div class="pin-display" id="pin-input-row">
@@ -225,6 +213,7 @@
           </div>
         </div>
         <button id="join-btn" class="btn btn-secondary" style="width:100%;">🔗 Join Room</button>
+        <div id="peer-status" class="peer-status" style="margin-top:.5rem;display:none;"></div>
       </div>
 
       <!-- ══ HOST PANEL ══ -->
@@ -251,20 +240,36 @@
           </div>
         </div>
 
+        <div class="input-group">
+          <label for="category-input">Word Category</label>
+          <select id="category-input">
+            <option value="">🎲 Random (all categories)</option>
+            <option value="animals">🐾 Animals</option>
+            <option value="food">🍕 Food</option>
+            <option value="nature">🌿 Nature</option>
+            <option value="objects">📦 Objects</option>
+            <option value="vehicles">🚗 Vehicles</option>
+            <option value="actions">🏃 Actions</option>
+            <option value="places">🏰 Places</option>
+            <option value="fantasy">🐉 Fantasy</option>
+            <option value="music">🎸 Music</option>
+            <option value="sports">⚽ Sports</option>
+            <option value="professions">👩‍⚕️ Professions</option>
+            <option value="concepts">💡 Concepts</option>
+          </select>
+        </div>
+
         <button id="gen-room-btn" class="btn btn-warn" style="width:100%;">🔑 Generate Room PIN</button>
 
-        <!-- PIN display -->
         <div id="host-pin-area" style="display:none;">
           <div style="font-size:.78rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;text-align:center;">Tell players this PIN:</div>
           <div class="room-pin-big" id="host-pin-display" title="Click to copy">------</div>
           <div class="room-pin-hint">Players just type these 6 numbers — that's it!</div>
+          <div id="pin-upload-status" style="font-size:.75rem;color:var(--text-muted);text-align:center;margin:.3rem 0;"></div>
 
           <div style="font-size:.82rem;font-weight:700;color:var(--text-muted);margin-top:.4rem;">Players in lobby:</div>
           <div id="player-chips" class="players-list"></div>
           <div id="slots-grid" style="display:flex;flex-direction:column;gap:.3rem;"></div>
-
-          <!-- PIN upload progress -->
-          <div id="pin-upload-status" style="font-size:.75rem;color:var(--text-muted);text-align:center;margin:.3rem 0;"></div>
 
           <button id="start-game-btn" class="btn btn-primary" style="width:100%;margin-top:.5rem;">🚀 Start Game</button>
         </div>
@@ -275,7 +280,7 @@
         <div id="join-connecting" class="join-status-card">
           <div class="join-spinner">🔄</div>
           <div style="font-weight:700;color:var(--accent4);font-size:.95rem;margin-top:.5rem;">Connecting to room…</div>
-          <div id="join-step-msg" style="font-size:.78rem;color:var(--text-muted);margin-top:.3rem;">Fetching room from relay…</div>
+          <div id="join-step-msg" style="font-size:.78rem;color:var(--text-muted);margin-top:.3rem;">Connecting via PeerJS…</div>
         </div>
         <div id="join-connected" style="display:none;" class="join-status-card">
           <div style="font-size:2rem;color:var(--accent3);">✓</div>
@@ -374,9 +379,6 @@ function toast(t,c="info",dur=3000){const e=document.createElement("div");e.clas
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
 function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]:1+Math.min(d[i-1][j],d[i][j-1],d[i-1][j-1]);return d[a.length][b.length];}
 
-async function compress(str){try{const bytes=new TextEncoder().encode(str);const cs=new CompressionStream("deflate-raw");const w=cs.writable.getWriter();w.write(bytes);w.close();const buf=await new Response(cs.readable).arrayBuffer();return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}catch{return btoa(encodeURIComponent(str));}}
-async function decompress(s){const b64=s.trim().replace(/-/g,"+").replace(/_/g,"/");const p=b64+"=".repeat((4-b64.length%4)%4);const bytes=Uint8Array.from(atob(p),c=>c.charCodeAt(0));try{const ds=new DecompressionStream("deflate-raw");const w=ds.writable.getWriter();w.write(bytes);w.close();return await new Response(ds.readable).text();}catch{return decodeURIComponent(atob(p));}}
-
 // ── DOM REFS ──
 const nameInput=$("name-input"),roundsInput=$("rounds-input"),lobbyStatus=$("lobby-status");
 const toolbar=$("toolbar"),chatInput=$("chat-input"),chatMessages=$("chat-messages"),sendBtn=$("send-btn");
@@ -390,14 +392,20 @@ const roundScoresList=$("round-scores-list"),roundEndTitle=$("round-end-title");
 const gameEndOverlay=$("game-end-overlay"),leaderboardList=$("leaderboard-list");
 const playAgainBtn=$("play-again-btn"),toastContainer=$("toast-container");
 const lobbyScreen=$("lobby-screen"),gameScreen=$("game-screen");
-
-const RELAY="https://ntfy.sh";
-const MAX_SLOTS=15;
+const initialBtns=$("initial-btns"),hostSection=$("host-section"),joinSection=$("join-section");
+const createBtn=$("create-btn"),joinBtn=$("join-btn");
+const genRoomBtn=$("gen-room-btn"),hostPinArea=$("host-pin-area"),hostPinDisplay=$("host-pin-display");
+const startGameBtn=$("start-game-btn"),playerChips=$("player-chips"),slotsGrid=$("slots-grid");
+const joinConnecting=$("join-connecting"),joinConnected=$("join-connected");
+const joinFailed=$("join-failed"),joinFailMsg=$("join-fail-msg"),joinRetryBtn=$("join-retry-btn");
+const joinStepMsg=$("join-step-msg"),pinUploadStatus=$("pin-upload-status");
+const peerStatusEl=$("peer-status");
 
 const G={
   myName:"",isHost:false,myId:null,
   words:[],peers:{},
   auth:{},disp:{},
+  selectedCategory:"",
   currentDrawer:null,currentWord:null,currentWordMasked:[],
   currentCategory:"",revealedIndices:new Set(),
   timeLeft:80,maxTime:80,timerInterval:null,
@@ -408,18 +416,52 @@ const G={
   isEraserActive:false,isBucketActive:false,currentColor:"#000000",brushSize:6,
   isDrawing:false,lastX:null,lastY:null,
 };
-const ICE={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]};
 
 // ── WORDS ──
 fetch("words.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>G.words=d).catch(()=>{
   G.words=[{word:"cat",category:"animals",difficulty:"easy",score:100},{word:"sun",category:"nature",difficulty:"easy",score:100},{word:"elephant",category:"animals",difficulty:"medium",score:200},{word:"volcano",category:"nature",difficulty:"medium",score:200},{word:"narwhal",category:"animals",difficulty:"hard",score:300},{word:"pizza",category:"food",difficulty:"easy",score:100},{word:"dragon",category:"fantasy",difficulty:"medium",score:200},{word:"mountain",category:"nature",difficulty:"easy",score:150},{word:"guitar",category:"music",difficulty:"easy",score:100},{word:"astronaut",category:"space",difficulty:"hard",score:300},{word:"rainbow",category:"nature",difficulty:"easy",score:100},{word:"telescope",category:"space",difficulty:"medium",score:200},{word:"butterfly",category:"animals",difficulty:"medium",score:200},{word:"waterfall",category:"nature",difficulty:"medium",score:200},{word:"spaceship",category:"space",difficulty:"medium",score:200},{word:"cactus",category:"nature",difficulty:"easy",score:100},{word:"igloo",category:"places",difficulty:"medium",score:200},{word:"tornado",category:"nature",difficulty:"medium",score:200},{word:"submarine",category:"vehicles",difficulty:"hard",score:300},{word:"penguin",category:"animals",difficulty:"easy",score:100}];
 });
-function pickWords(){const pool=[...G.words];shuffle(pool);const e=pool.find(w=>w.difficulty==="easy"),m=pool.find(w=>w.difficulty==="medium"),h=pool.find(w=>w.difficulty==="hard");const choices=[e,m,h].filter(Boolean);for(const w of pool){if(choices.length>=3)break;if(!choices.includes(w))choices.push(w);}return choices.slice(0,3);}
+function pickWords(){
+  let pool=G.selectedCategory?G.words.filter(w=>w.category===G.selectedCategory):[...G.words];
+  if(pool.length<3)pool=[...G.words];
+  shuffle(pool);
+  const e=pool.find(w=>w.difficulty==="easy"),m=pool.find(w=>w.difficulty==="medium"),h=pool.find(w=>w.difficulty==="hard");
+  const choices=[e,m,h].filter(Boolean);
+  for(const w of pool){if(choices.length>=3)break;if(!choices.includes(w))choices.push(w);}
+  return choices.slice(0,3);
+}
+
+// ══════════════════════════════════════════════════════════
+// PEERJS SIGNALING — replaces ntfy.sh
+// ─────────────────────────────────────────────────────────
+// How it works:
+//   HOST:   Creates a Peer with ID "skribblr-{PIN}"
+//           Listens for incoming connections from joiners.
+//
+//   JOINER: Enters the 6-digit PIN.
+//           Creates an anonymous Peer, then calls
+//           peer.connect("skribblr-{PIN}") to reach the host.
+//
+// PeerJS handles all the WebRTC offer/answer/ICE via its
+// free signaling server (0.peerjs.com) — no CORS, no rate
+// limits, no POST requests at all.
+// ══════════════════════════════════════════════════════════
+
+let hostPeer=null;   // host's own Peer object
+let joinerPeer=null; // joiner's own Peer object
+let hostRoomPin=null;
 
 // ── NET ──
-function sendTo(id,msg){const p=G.peers[id];if(p&&p.dc&&p.dc.readyState==="open")p.dc.send(JSON.stringify(msg));}
+function sendTo(id,msg){
+  const p=G.peers[id];
+  if(p&&p.conn&&p.conn.open)p.conn.send(JSON.stringify(msg));
+}
 function sendToHost(msg){sendTo("host",msg);}
-function broadcast(msg,excl=null){for(const[id,p]of Object.entries(G.peers))if(id!==excl&&p.dc&&p.dc.readyState==="open")p.dc.send(JSON.stringify(msg));}
+function broadcast(msg,excl=null){
+  for(const[id,p]of Object.entries(G.peers)){
+    if(id!==excl&&p.conn&&p.conn.open)p.conn.send(JSON.stringify(msg));
+  }
+}
 function nameOf(id){if(id===G.myId)return G.myName;return G.disp[id]?.name||G.peers[id]?.name||id;}
 
 // ── STATE SYNC ──
@@ -438,33 +480,128 @@ function applyRoundSync(msg){
 }
 function pushScores(){if(!G.isHost)return;broadcast({type:"score-update",disp:G.disp});}
 
-// ═══════════════════════════════════════════
-// PIN-BASED SIGNALING
-// ─────────────────────────────────────────
-// 1. Host generates a random 6-digit PIN like "482910"
-// 2. Host publishes all SDP offers to ntfy.sh under:
-//      skribblr-{PIN}-slots
-//    Each offer is a separate message with peerId + compressed SDP.
-// 3. Joiner reads the PIN, fetches offers from ntfy.sh
-// 4. Joiner picks a slot, posts answer to:
-//      skribblr-{PIN}-answers
-// 5. Host polls answers topic, applies each answer
-// ═══════════════════════════════════════════
+// ── HOST: open room via PeerJS ──
+function openLobby(){
+  genRoomBtn.disabled=true;genRoomBtn.textContent="Connecting…";
+  pinUploadStatus.textContent="Connecting to PeerJS signaling server…";
 
-// Lobby DOM
-const initialBtns=$("initial-btns"),hostSection=$("host-section"),joinSection=$("join-section");
-const createBtn=$("create-btn"),joinBtn=$("join-btn");
-const genRoomBtn=$("gen-room-btn"),hostPinArea=$("host-pin-area"),hostPinDisplay=$("host-pin-display");
-const startGameBtn=$("start-game-btn"),playerChips=$("player-chips"),slotsGrid=$("slots-grid");
-const joinConnecting=$("join-connecting"),joinConnected=$("join-connected");
-const joinFailed=$("join-failed"),joinFailMsg=$("join-fail-msg"),joinRetryBtn=$("join-retry-btn");
-const joinStepMsg=$("join-step-msg"),pinUploadStatus=$("pin-upload-status");
+  hostRoomPin=String(Math.floor(100000+Math.random()*900000));
+  const peerId="skribblr-"+hostRoomPin;
+
+  if(hostPeer){try{hostPeer.destroy();}catch{}}
+  hostPeer=new Peer(peerId);
+
+  hostPeer.on("open",id=>{
+    hostPinDisplay.textContent=hostRoomPin;
+    hostPinArea.style.display="";
+    genRoomBtn.disabled=false;
+    genRoomBtn.textContent="🔄 Regenerate PIN";
+    pinUploadStatus.textContent="✅ Room ready! Share PIN "+hostRoomPin;
+    setStatus("Share PIN "+hostRoomPin+" — players just type it!","ok");
+    updatePlayerChips();
+  });
+
+  hostPeer.on("connection",conn=>{
+    const joinerId=conn.peer; // e.g. "skribblr-joiner-XXXXXXXX"
+    // derive a short stable ID from the conn.peer string
+    const shortId="p_"+conn.peer.replace(/[^a-z0-9]/gi,"").slice(-8);
+    G.peers[shortId]={name:"",conn};
+
+    conn.on("open",()=>{
+      // Tell the joiner their assigned shortId
+      conn.send(JSON.stringify({type:"assign-id",yourId:shortId}));
+      updateSlotsUI();updatePlayerChips();
+    });
+    conn.on("data",raw=>onMsg(raw,shortId));
+    conn.on("close",()=>{
+      delete G.peers[shortId];updateSlotsUI();updatePlayerChips();
+      setStatus(Object.values(G.peers).filter(p=>p.name).length+" player(s) in lobby","ok");
+    });
+    conn.on("error",err=>console.warn("Peer conn error:",err));
+  });
+
+  hostPeer.on("error",err=>{
+    console.error("PeerJS host error:",err);
+    if(err.type==="unavailable-id"){
+      // PIN collision — regenerate
+      pinUploadStatus.textContent="PIN taken, regenerating…";
+      setTimeout(openLobby,500);
+    }else{
+      pinUploadStatus.textContent="⚠️ PeerJS error: "+err.message;
+      genRoomBtn.disabled=false;genRoomBtn.textContent="🔑 Generate Room PIN";
+      setStatus("Connection error — try again","err");
+    }
+  });
+}
+
+// ── JOINER: connect to host via PeerJS ──
+async function joinWithPin(pin){
+  if(pin.length!==6||!/^\d{6}$/.test(pin)){setStatus("Enter a valid 6-digit PIN","err");return;}
+
+  initialBtns.style.display="none";
+  joinSection.style.display="";
+  joinConnecting.style.display="";joinConnected.style.display="none";joinFailed.style.display="none";
+  joinStepMsg.textContent="Connecting to PeerJS…";
+
+  if(joinerPeer){try{joinerPeer.destroy();}catch{}}
+
+  // Joiner gets a random peer ID
+  joinerPeer=new Peer();
+
+  joinerPeer.on("open",myPeerId=>{
+    joinStepMsg.textContent="Reaching host room "+pin+"…";
+    const hostPeerId="skribblr-"+pin;
+    const conn=joinerPeer.connect(hostPeerId,{reliable:true});
+    G.peers["host"]={name:"Host",conn};
+
+    conn.on("open",()=>{
+      joinStepMsg.textContent="Connected! Introducing…";
+      // Wait for assign-id before sending join
+    });
+
+    conn.on("data",raw=>onMsg(raw,"host"));
+
+    conn.on("close",()=>{
+      if(!gameScreen.classList.contains("active")){
+        joinConnected.style.display="none";
+        joinFailed.style.display="";
+        joinFailMsg.textContent="Disconnected from host.";
+      }
+    });
+
+    conn.on("error",err=>{
+      joinConnecting.style.display="none";
+      joinFailed.style.display="";
+      joinFailMsg.textContent="Connection error: "+err.message;
+      setStatus("Connection failed","err");
+    });
+
+    // Timeout if host doesn't respond
+    setTimeout(()=>{
+      if(joinConnecting.style.display!=="none"){
+        joinConnecting.style.display="none";
+        joinFailed.style.display="";
+        joinFailMsg.textContent="Host not found. Check the PIN and try again.";
+        setStatus("Connection timed out","err");
+      }
+    },12000);
+  });
+
+  joinerPeer.on("error",err=>{
+    console.error("PeerJS joiner error:",err);
+    joinConnecting.style.display="none";
+    joinFailed.style.display="";
+    joinFailMsg.textContent=err.type==="peer-unavailable"
+      ?"Room not found. Check the PIN and try again."
+      :"PeerJS error: "+err.message;
+    setStatus("Connection failed","err");
+  });
+}
 
 // Pin input wiring — auto-advance on digit entry
 const pinInputs=Array.from({length:6},(_,i)=>$("pin"+i));
 pinInputs.forEach((el,i)=>{
   el.addEventListener('input',e=>{
-    // Filter non-digits
     el.value=el.value.replace(/\D/g,"").slice(0,1);
     if(el.value)el.classList.add("filled");else el.classList.remove("filled");
     if(el.value&&i<5)pinInputs[i+1].focus();
@@ -480,227 +617,7 @@ pinInputs.forEach((el,i)=>{
     const next=Math.min(i+text.length,5);pinInputs[next].focus();
   });
 });
-
 function getEnteredPin(){return pinInputs.map(el=>el.value).join("");}
-
-let hostRoomPin=null;
-let hostPollTimer=null;
-const appliedAnswers=new Set();
-
-// ── HOST: Generate PIN and publish offers ──
-async function openLobby(){
-  genRoomBtn.disabled=true;genRoomBtn.textContent="Generating…";
-  setStatus("Creating connection slots…","");pinUploadStatus.textContent="Building WebRTC offers…";
-
-  // Generate 6-digit PIN
-  hostRoomPin=String(Math.floor(100000+Math.random()*900000));
-
-  // Build all offers
-  const offers=[];
-  await Promise.all(Array.from({length:MAX_SLOTS},()=>{
-    const peerId="p_"+Math.random().toString(36).slice(2,10);
-    const pc=new RTCPeerConnection(ICE);
-    const dc=pc.createDataChannel("game",{ordered:true});
-    G.peers[peerId]={name:"",pc,dc};
-    dc.onmessage=e=>onMsg(e.data,peerId);
-    dc.onopen=()=>updateSlotsUI();
-    pc.oniceconnectionstatechange=()=>{
-      if(pc.iceConnectionState==="connected"||pc.iceConnectionState==="completed"){
-        const n=Object.values(G.peers).filter(p=>p.name).length;
-        setStatus(n+" player"+(n!==1?"s":"")+" in lobby","ok");
-        updateSlotsUI();updatePlayerChips();
-      }
-    };
-    return new Promise(res=>{
-      pc.onicecandidate=e=>{if(!e.candidate){offers.push({peerId,sdp:pc.localDescription});res();}};
-      pc.createOffer().then(o=>pc.setLocalDescription(o));
-    });
-  }));
-
-  // Show PIN immediately — joiner can start connecting while we upload
-  hostPinDisplay.textContent=hostRoomPin;
-  hostPinArea.style.display="";
-  genRoomBtn.disabled=false;genRoomBtn.textContent="🔄 Regenerate PIN";
-  updatePlayerChips();
-
-  // Upload offers to relay (each slot = one message)
-  // We publish them as a JSON bundle on a single topic message for speed
-  const slotsTopic=`skribblr-${hostRoomPin}-slots`;
-  const bundle={v:1,hostName:G.myName,slots:offers};
-  const compressed=await compress(JSON.stringify(bundle));
-
-  try{
-    pinUploadStatus.textContent="Publishing room to relay…";
-    const r=await fetch(`${RELAY}/${slotsTopic}`,{
-      method:"POST",body:compressed,
-      headers:{"Content-Type":"text/plain","X-TTL":"600"},
-      signal:AbortSignal.timeout(10000)
-    });
-    if(r.ok){
-      pinUploadStatus.textContent="✅ Room published! Players can connect now.";
-      setStatus("Share PIN "+hostRoomPin+" — players just type it!","ok");
-    }else{
-      pinUploadStatus.textContent="⚠️ Relay upload failed (code "+r.status+"). Local network only.";
-      setStatus("Share PIN "+hostRoomPin,"ok");
-    }
-  }catch(e){
-    pinUploadStatus.textContent="⚠️ Relay unreachable: "+e.message;
-    setStatus("Share PIN "+hostRoomPin,"ok");
-  }
-
-  // Start polling for joiner answers
-  startHostPoll();
-}
-
-// HOST: poll relay for joiner answers
-function startHostPoll(){
-  clearInterval(hostPollTimer);
-  const answersTopic=`skribblr-${hostRoomPin}-answers`;
-  const since=Date.now();
-
-  let es;
-  try{
-    es=new EventSource(`${RELAY}/${answersTopic}/sse`);
-    es.onmessage=async e=>{try{const d=JSON.parse(e.data);if(d.message)await processAnswer(d.message);}catch{}};
-    es.onerror=()=>{es.close();startHostPollFallback(answersTopic,since);};
-  }catch{startHostPollFallback(answersTopic,since);}
-}
-function startHostPollFallback(topic,since){
-  clearInterval(hostPollTimer);
-  let lastPoll=since;
-  hostPollTimer=setInterval(async()=>{
-    try{
-      const r=await fetch(`${RELAY}/${topic}/json?poll=1&since=${lastPoll}ms`,{signal:AbortSignal.timeout(3000)});
-      if(!r.ok)return;
-      const text=await r.text();lastPoll=Date.now();
-      for(const line of text.trim().split("\n").filter(Boolean)){try{const m=JSON.parse(line);if(m.message)await processAnswer(m.message);}catch{}}
-    }catch{}
-  },1500);
-}
-async function processAnswer(compressed){
-  if(typeof compressed==="string"&&(compressed.startsWith("BUSY:")||compressed.startsWith("OK:")))return;
-  const dedupKey=compressed.slice(0,30);
-  if(appliedAnswers.has(dedupKey))return;
-  appliedAnswers.add(dedupKey);
-  const answersTopic=`skribblr-${hostRoomPin}-answers`;
-  try{
-    const json=await decompress(compressed);
-    const{sdp,peerId,tok}=JSON.parse(json);
-    if(!sdp||!peerId)return;
-    const peer=G.peers[peerId];
-    if(!peer?.pc){if(tok)fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:"BUSY:"+tok,headers:{"Content-Type":"text/plain"}}).catch(()=>{});return;}
-    if(peer.pc.remoteDescription||peer.pc.signalingState==="stable"){if(tok)fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:"BUSY:"+tok,headers:{"Content-Type":"text/plain"}}).catch(()=>{});return;}
-    await peer.pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    if(tok)fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:"OK:"+tok,headers:{"Content-Type":"text/plain"}}).catch(()=>{});
-    updateSlotsUI();updatePlayerChips();
-  }catch(e){console.warn("Answer apply failed:",e.message);}
-}
-function stopHost(){clearInterval(hostPollTimer);}
-
-// ── JOINER: enter PIN, fetch offers, connect ──
-async function joinWithPin(pin){
-  if(pin.length!==6||!/^\d{6}$/.test(pin)){setStatus("Enter a valid 6-digit PIN","err");return;}
-
-  initialBtns.style.display="none";
-  joinSection.style.display="";
-  joinConnecting.style.display="";joinConnected.style.display="none";joinFailed.style.display="none";
-  setStatus("Connecting…","");joinStepMsg.textContent="Fetching room from relay…";
-
-  try{
-    // Fetch the bundle published by host
-    const slotsTopic=`skribblr-${pin}-slots`;
-    joinStepMsg.textContent="Downloading room offers…";
-    let bundle=null;
-
-    // Try fetching recent messages from the topic (last 10 min)
-    const since=Date.now()-600000; // 10 minutes back
-    const r=await fetch(`${RELAY}/${slotsTopic}/json?poll=1&since=${since}ms&limit=1`,{signal:AbortSignal.timeout(8000)});
-    if(!r.ok)throw new Error("Room not found. Check the PIN and try again.");
-    const text=await r.text();
-    const lines=text.trim().split("\n").filter(Boolean);
-    if(!lines.length)throw new Error("Room not found or expired. Ask host to regenerate.");
-
-    // Take the most recent message
-    const lastLine=lines[lines.length-1];
-    const msg=JSON.parse(lastLine);
-    if(!msg.message)throw new Error("Invalid room data.");
-
-    const json=await decompress(msg.message);
-    bundle=JSON.parse(json);
-    if(!bundle?.slots?.length)throw new Error("Invalid room data.");
-
-    joinStepMsg.textContent="Room found! Establishing connection…";
-
-    // From here: same slot-based connection logic as before
-    const myTok=Math.random().toString(36).slice(2,10);
-    const slots=[...bundle.slots];
-    let seed=myTok.split("").reduce((a,c)=>a*31+c.charCodeAt(0),0)>>>0;
-    const rng=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/0x100000000;};
-    for(let i=slots.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[slots[i],slots[j]]=[slots[j],slots[i]];}
-
-    const answersTopic=`skribblr-${pin}-answers`;
-    let connected=false;
-    let busyResolve;
-    let busyPromise=new Promise(r=>busyResolve=r);
-    let es;
-    try{
-      es=new EventSource(`${RELAY}/${answersTopic}/sse`);
-      es.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.message&&d.message.startsWith("BUSY:"+myTok))busyResolve("busy");if(d.message&&d.message.startsWith("OK:"+myTok))busyResolve("ok");}catch{}};
-    }catch{}
-
-    for(let si=0;si<slots.length&&!connected;si++){
-      const slot=slots[si];
-      joinStepMsg.textContent=`Trying slot ${si+1}/${slots.length}…`;
-
-      if(G.peers["host"]?.pc&&G.peers["host"].pc.signalingState!=="closed"){try{G.peers["host"].pc.close();}catch{}}
-      const pc=new RTCPeerConnection(ICE);
-      G.peers["host"]={name:bundle.hostName||"Host",pc,dc:null};
-
-      pc.ondatachannel=e=>{
-        const dc=e.channel;
-        G.peers["host"].dc=dc;
-        dc.onmessage=ev=>onMsg(ev.data,"host");
-        dc.onopen=()=>{
-          connected=true;if(es)es.close();
-          setTimeout(()=>sendToHost({type:"join",name:G.myName}),120);
-          joinConnecting.style.display="none";joinConnected.style.display="";
-          setStatus("Connected! Waiting for host to start…","ok");
-        };
-      };
-      let iceFailed=false;
-      pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==="failed")iceFailed=true;};
-
-      let answerJson;
-      try{
-        answerJson=await new Promise((res,rej)=>{
-          const t=setTimeout(()=>rej(new Error("ICE timeout")),12000);
-          pc.onicecandidate=e=>{if(!e.candidate){clearTimeout(t);res(JSON.stringify({sdp:pc.localDescription,peerId:slot.peerId,tok:myTok}));}};
-          pc.setRemoteDescription(new RTCSessionDescription(slot.sdp)).then(()=>pc.createAnswer()).then(a=>pc.setLocalDescription(a)).catch(rej);
-        });
-      }catch(e){console.warn("Slot"+si+" ICE failed:",e.message);continue;}
-
-      const compressed=await compress(answerJson);
-      try{
-        await fetch(`${RELAY}/${answersTopic}`,{method:"POST",body:compressed,headers:{"Content-Type":"text/plain"},signal:AbortSignal.timeout(8000)});
-      }catch{continue;}
-
-      const result=await Promise.race([
-        new Promise(r=>setTimeout(()=>r("timeout"),8000)),
-        busyPromise,
-        new Promise(r=>{const iv=setInterval(()=>{if(connected){clearInterval(iv);r("connected");}if(iceFailed){clearInterval(iv);r("failed");}},200);})
-      ]);
-      if(result==="connected")break;
-      busyPromise=new Promise(r=>busyResolve=r);
-    }
-
-    if(!connected){if(es)es.close();throw new Error("All slots busy. Ask host to regenerate the PIN.");}
-  }catch(e){
-    console.error("Join failed",e);
-    joinConnecting.style.display="none";joinFailed.style.display="";
-    joinFailMsg.textContent=e.message||"Connection failed — try again";
-    setStatus("Connection failed","err");
-  }
-}
 
 // ── BUTTON HANDLERS ──
 createBtn.addEventListener("click",()=>{
@@ -720,37 +637,60 @@ joinBtn.addEventListener("click",()=>{
 genRoomBtn.addEventListener("click",()=>{
   G.totalRounds=parseInt(roundsInput.value)||3;
   G.maxTime=parseInt($("timer-input").value)||80;
+  G.selectedCategory=$("category-input").value||"";
   openLobby();
 });
 hostPinDisplay.addEventListener("click",()=>{
   navigator.clipboard.writeText(hostRoomPin).then(()=>toast("PIN copied!","success")).catch(()=>{});
 });
 startGameBtn.addEventListener("click",()=>{
-  const conn=Object.keys(G.peers).filter(id=>G.peers[id].name&&G.peers[id].dc&&G.peers[id].dc.readyState==="open");
+  const conn=Object.keys(G.peers).filter(id=>G.peers[id].name&&G.peers[id].conn&&G.peers[id].conn.open);
   if(!conn.length){setStatus("No players connected yet","err");return;}
-  stopHost();
   G.turnOrder=shuffle(["host",...conn]);G.turnIndex=0;G.currentRound=1;
   const init={type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:1,maxTime:G.maxTime,
+    selectedCategory:G.selectedCategory,
     peerMap:Object.fromEntries(conn.map(id=>[id,{name:G.peers[id].name}])),hostName:G.myName};
   for(const id of conn)sendTo(id,{...init,yourId:id});
   applyGameInit(init);beginTurn();
 });
 joinRetryBtn.addEventListener("click",()=>{
   joinFailed.style.display="none";initialBtns.style.display="";joinSection.style.display="none";
-  createBtn.disabled=false;joinBtn.disabled=false;pinInputs.forEach(el=>{el.value="";el.classList.remove("filled");});
+  createBtn.disabled=false;joinBtn.disabled=false;
+  pinInputs.forEach(el=>{el.value="";el.classList.remove("filled");});
+  if(joinerPeer){try{joinerPeer.destroy();}catch{}joinerPeer=null;}
   setStatus("Enter the PIN again and click Join","");
 });
 
-function updateSlotsUI(){if(!slotsGrid)return;slotsGrid.innerHTML="";for(const[,p]of Object.entries(G.peers)){if(!p.name)continue;const div=document.createElement("div");div.style.cssText="display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;font-weight:700;";div.innerHTML='<div style="width:8px;height:8px;border-radius:50%;background:var(--accent3)"></div>'+esc(p.name);slotsGrid.appendChild(div);}}
+function updateSlotsUI(){
+  if(!slotsGrid)return;slotsGrid.innerHTML="";
+  for(const[,p]of Object.entries(G.peers)){
+    if(!p.name)continue;
+    const div=document.createElement("div");
+    div.style.cssText="display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;font-weight:700;";
+    div.innerHTML='<div style="width:8px;height:8px;border-radius:50%;background:var(--accent3)"></div>'+esc(p.name);
+    slotsGrid.appendChild(div);
+  }
+}
 
 // ── PLAYER TRACKING ──
 function initPlayer(id,name){G.auth[id]={score:0,guessedThisRound:false,roundPts:0};G.disp[id]={name,score:0,guessedThisRound:false};}
 function broadcastPlayerList(){broadcast({type:"player-list",players:[{id:"host",name:G.myName},...Object.entries(G.peers).map(([id,p])=>({id,name:p.name}))]});}
-function applyPlayerList(players){for(const p of players){if(p.id===G.myId)continue;if(!G.peers[p.id])G.peers[p.id]={name:p.name,pc:null,dc:null};G.peers[p.id].name=p.name;if(!G.disp[p.id])G.disp[p.id]={name:p.name,score:0,guessedThisRound:false};}}
+function applyPlayerList(players){for(const p of players){if(p.id===G.myId)continue;if(!G.peers[p.id])G.peers[p.id]={name:p.name,conn:null};G.peers[p.id].name=p.name;if(!G.disp[p.id])G.disp[p.id]={name:p.name,score:0,guessedThisRound:false};}}
 
 // ── MESSAGE HANDLER ──
 function onMsg(raw,fromId){
   let msg;try{msg=JSON.parse(raw);}catch{return;}
+
+  // Handle assign-id for joiners (comes before join)
+  if(msg.type==="assign-id"&&!G.isHost){
+    G.myId=msg.yourId;
+    // Now safe to introduce ourselves
+    sendToHost({type:"join",name:G.myName});
+    joinConnecting.style.display="none";joinConnected.style.display="";
+    setStatus("Connected! Waiting for host to start…","ok");
+    return;
+  }
+
   if(G.isHost){
     switch(msg.type){
       case "draw-relay":broadcast({...msg,type:"draw"},fromId);renderDraw(msg);return;
@@ -760,15 +700,18 @@ function onMsg(raw,fromId){
       case "hint-relay":broadcast({...msg,type:"word-hint"},fromId);applyHint(msg);return;
       case "word-chosen-relay":{const wc={...msg,type:"word-chosen"};broadcast(wc,fromId);applyWordChosen(wc);return;}
       case "chat":
-        if(msg.isGuess&&G.currentWord){if(!checkGuess(msg.text,fromId,msg.name)){broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,isClose(msg.text));if(isClose(msg.text))sendTo(fromId,{type:"close-notice"});}}
-        else{broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,false);}return;
+        if(msg.isGuess&&G.currentWord){
+          if(!checkGuess(msg.text,fromId,msg.name)){broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,isClose(msg.text));if(isClose(msg.text))sendTo(fromId,{type:"close-notice"});}
+        }else{broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,false);}
+        return;
       case "join":
         G.peers[fromId].name=msg.name;initPlayer(fromId,msg.name);
         updatePlayerChips();updateSlotsUI();broadcastPlayerList();
-        if(gameScreen.classList.contains("active")){sendTo(fromId,{type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:G.currentRound,peerMap:Object.fromEntries(Object.entries(G.peers).filter(([id])=>id!==fromId).map(([id,p])=>[id,{name:p.name}])),hostName:G.myName,yourId:fromId,lateJoin:true});}
+        if(gameScreen.classList.contains("active")){sendTo(fromId,{type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:G.currentRound,selectedCategory:G.selectedCategory,peerMap:Object.fromEntries(Object.entries(G.peers).filter(([id])=>id!==fromId).map(([id,p])=>[id,{name:p.name}])),hostName:G.myName,yourId:fromId,lateJoin:true});}
         addSystem(`${esc(msg.name)} joined!`);
         setStatus(`${Object.values(G.peers).filter(p=>p.name).length+1} player(s) in lobby`,"ok");
-        setTimeout(()=>broadcastState(),200);return;
+        setTimeout(()=>broadcastState(),200);
+        return;
     }
   }
   switch(msg.type){
@@ -796,8 +739,9 @@ function onMsg(raw,fromId){
 function applyGameInit(msg){
   G.turnOrder=msg.turnOrder;G.totalRounds=msg.totalRounds;G.currentRound=msg.round;
   if(msg.maxTime)G.maxTime=msg.maxTime;
+  if(msg.selectedCategory!==undefined)G.selectedCategory=msg.selectedCategory;
   if(!G.isHost&&msg.yourId)G.myId=msg.yourId;
-  if(msg.peerMap){for(const[id,pd]of Object.entries(msg.peerMap)){if(!G.peers[id])G.peers[id]={name:pd.name,pc:null,dc:null};else G.peers[id].name=pd.name;if(!G.disp[id])G.disp[id]={name:pd.name,score:0,guessedThisRound:false};}}
+  if(msg.peerMap){for(const[id,pd]of Object.entries(msg.peerMap)){if(!G.peers[id])G.peers[id]={name:pd.name,conn:null};else G.peers[id].name=pd.name;if(!G.disp[id])G.disp[id]={name:pd.name,score:0,guessedThisRound:false};}}
   if(!G.isHost){if(!G.disp["host"])G.disp["host"]={name:msg.hostName||"Host",score:0,guessedThisRound:false};if(!G.disp[G.myId])G.disp[G.myId]={name:G.myName,score:0,guessedThisRound:false};}
   if(!msg.lateJoin)showGameScreen();
 }
@@ -811,7 +755,8 @@ function showGameScreen(){
 // ── TURN MANAGEMENT ──
 function beginTurn(){
   G.guessedThisRound=false;G.endTurnCalled=false;G.guessCount=0;
-  G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";clearCanvas();
+  G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";
+  clearCanvas();broadcast({type:"clear"});
   for(const id of Object.keys(G.auth)){G.auth[id].guessedThisRound=false;G.auth[id].roundPts=0;}
   for(const id of Object.keys(G.disp))G.disp[id].guessedThisRound=false;
   const drawerId=G.turnOrder[G.turnIndex];G.currentDrawer=drawerId;G.canDraw=(drawerId===G.myId);
@@ -874,7 +819,7 @@ function revealLetter(){
   if(!G.currentWord||G.currentDrawer!==G.myId)return;
   const word=G.currentWord.word;
   const unrev=word.split("").map((_,i)=>i).filter(i=>word[i]!==" "&&!G.revealedIndices.has(i)&&G.currentWordMasked[i]==="_");
-  if(!unrev.length)return;
+  if(unrev.length<=1)return;
   const idx=unrev[0|Math.random()*unrev.length];G.revealedIndices.add(idx);
   G.currentWordMasked=G.currentWordMasked.map((c,i)=>G.revealedIndices.has(i)?word[i]:c);
   updateWordDisplay(G.currentWordMasked,G.currentWord.category||"");
@@ -886,8 +831,13 @@ function applyHint(msg){G.currentWordMasked=[...msg.masked];if(msg.revealedIdx!=
 // ── TIMER ──
 function startTimer(){
   clearInterval(G.timerInterval);G.timeLeft=G.maxTime;renderTimer();
-  let hints=0;const hintAt=[Math.floor(G.maxTime*.6),Math.floor(G.maxTime*.3)];
-  G.timerInterval=setInterval(()=>{G.timeLeft--;renderTimer();if(G.currentDrawer===G.myId&&hints<hintAt.length&&G.timeLeft<=hintAt[hints]){revealLetter();hints++;}if(G.timeLeft<=0){clearInterval(G.timerInterval);if(G.isHost)endTurn(false);}},1000);
+  let hints=0;
+  const hintAt=[Math.floor(G.maxTime*.7),Math.floor(G.maxTime*.4),Math.floor(G.maxTime*.2)];
+  G.timerInterval=setInterval(()=>{
+    G.timeLeft--;renderTimer();
+    if(G.currentDrawer===G.myId&&hints<hintAt.length&&G.timeLeft<=hintAt[hints]){revealLetter();hints++;}
+    if(G.timeLeft<=0){clearInterval(G.timerInterval);if(G.isHost)endTurn(false);}
+  },1000);
 }
 function renderTimer(){
   timerNum.textContent=G.timeLeft;const pct=G.timeLeft/G.maxTime,circ=2*Math.PI*22;
@@ -895,12 +845,17 @@ function renderTimer(){
 }
 
 // ── SCORING ──
-function calcPts(base,tl,mt,order){return Math.max(10,Math.round(base*Math.max(.3,1-order*.15)*(.4+.6*tl/mt)));}
+function calcPts(timeLeft,maxTime,guessOrder){
+  const MAX_PTS=500,MIN_PTS=50;
+  const timeFactor=0.2+0.8*(timeLeft/maxTime);
+  const orderFactor=Math.max(0.4,1-guessOrder*0.15);
+  return Math.max(MIN_PTS,Math.round(MAX_PTS*timeFactor*orderFactor));
+}
 function checkGuess(text,fromId,fromName){
   if(!G.currentWord)return false;if(fromId===G.currentDrawer)return false;
   const a=G.auth[fromId];if(!a||a.guessedThisRound)return false;
   if(text.trim().toLowerCase()!==G.currentWord.word.toLowerCase())return false;
-  const pts=calcPts(G.currentWord.score,G.timeLeft,G.maxTime,G.guessCount++);
+  const pts=calcPts(G.timeLeft,G.maxTime,G.guessCount++);
   a.score+=pts;a.guessedThisRound=true;a.roundPts=pts;G.disp[fromId].score=a.score;G.disp[fromId].guessedThisRound=true;
   const gName=fromId==="host"?G.myName:(fromName||nameOf(fromId));
   const cMsg={type:"correct-guess",guesser:fromId,guesserName:gName,pts};
