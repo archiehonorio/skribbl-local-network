@@ -81,11 +81,13 @@
     .timer-ring .fg{fill:none;stroke-width:4;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .9s linear,stroke .5s;}
     .timer-ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1rem;color:var(--text);}
     .word-display{display:flex;flex-direction:column;align-items:center;gap:.15rem;}
-    .word-hint{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:center;}
+    .word-hint{display:flex;gap:.4rem;align-items:flex-end;flex-wrap:wrap;justify-content:center;}
+    .word-group{display:inline-flex;flex-direction:column;align-items:center;gap:.1rem;}
+    .word-group-count{font-family:'Fredoka One',cursive;font-size:.68rem;color:var(--accent2);letter-spacing:.5px;}
+    .word-group-blanks{display:flex;gap:0;}
     .letter-blank{display:inline-flex;align-items:center;justify-content:center;min-width:1.4rem;height:1.6rem;border-bottom:2px solid var(--text-muted);font-family:'Fredoka One',cursive;font-size:1.1rem;color:transparent;background:transparent;margin:0 1px;transition:all .3s;}
     .letter-blank.revealed{color:var(--accent3);border-color:var(--accent3);}
-    /* Space separator shown between words */
-    .letter-space{display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1.6rem;font-family:'Fredoka One',cursive;font-size:.85rem;color:var(--text-muted);margin:0 3px;border-bottom:none;}
+    .letter-space{display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1.6rem;font-family:'Fredoka One',cursive;font-size:.85rem;color:var(--text-muted);margin:0 3px;border-bottom:none;align-self:flex-end;}
     .word-category{font-size:.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;}
     .word-length-info{font-size:.65rem;color:var(--text-muted);font-weight:700;letter-spacing:.5px;margin-top:.1rem;}
     .drawer-label{font-size:.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
@@ -698,39 +700,45 @@ function applyWordChosen(msg){
 // ── MASK: space chars become " " so guessers see a gap, letters become "_"
 function buildMask(w){return w.split("").map(c=>c===" "?" ":"_");}
 
-// ── WORD DISPLAY: renders blanks with visible space separators (—) between words
+// ── WORD DISPLAY: each word is a group with its count floating above the blanks
 function updateWordDisplay(masked,cat){
-  if(!Array.isArray(masked)||!masked.length){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=cat?"Category: "+cat:"";return;}
+  if(!Array.isArray(masked)||!masked.length){
+    wordDisplayEl.innerHTML="? ? ?";
+    wordCategoryEl.textContent=cat?"Category: "+cat:"";
+    const wli=document.getElementById("word-length-info");if(wli)wli.textContent="";
+    return;
+  }
 
-  // If the drawer knows the word, show the full word above
-  let fullWordHint="";
-  if(G.canDraw&&G.currentWord){fullWordHint=` <small style="color:var(--accent3);font-size:.7rem;">(${esc(G.currentWord.word)})</small>`;}
+  // Split masked array into word segments separated by spaces
+  const segments=[];let cur=[];let curStart=0;
+  masked.forEach((c,i)=>{
+    if(c===" "){if(cur.length)segments.push({chars:cur,start:curStart});cur=[];curStart=i+1;}
+    else{cur.push({c,i});}
+  });
+  if(cur.length)segments.push({chars:cur,start:curStart});
 
   let html="";
-  masked.forEach((c,i)=>{
-    if(c===" "){
-      // Space between words: show a short dash separator so guessers know
-      html+=`<span class="letter-space">—</span>`;
-    } else {
+  segments.forEach((seg,si)=>{
+    if(si>0)html+=`<span class="letter-space">—</span>`;
+    const count=seg.chars.length;
+    let blanksHtml="";
+    seg.chars.forEach(({c,i})=>{
       const isRevealed=G.revealedIndices.has(i);
       let displayChar="_";
-      if(isRevealed||G.canDraw){
-        displayChar=G.currentWord?G.currentWord.word[i]:c;
-      }
-      html+=`<span class="letter-blank${isRevealed?" revealed":""}">${esc(displayChar)}</span>`;
-    }
+      if(isRevealed||(G.canDraw&&G.currentWord))displayChar=G.currentWord?G.currentWord.word[i]:c;
+      blanksHtml+=`<span class="letter-blank${isRevealed?" revealed":""}">${esc(displayChar)}</span>`;
+    });
+    html+=`<span class="word-group"><span class="word-group-count">${count}</span><span class="word-group-blanks">${blanksHtml}</span></span>`;
   });
 
-  wordDisplayEl.innerHTML=html+fullWordHint;
+  // Drawer hint
+  if(G.canDraw&&G.currentWord)html+=` <small style="color:var(--accent3);font-size:.7rem;">(${esc(G.currentWord.word)})</small>`;
+
+  wordDisplayEl.innerHTML=html;
   const safeCat=(cat&&cat!=="undefined")?cat:"";
   wordCategoryEl.textContent=safeCat?"Category: "+safeCat:"";
-  // Show letter count per word e.g. "(4 letters)" or "(4, 3 letters)" for multi-word
   const wordLengthEl=document.getElementById("word-length-info");
-  if(wordLengthEl&&Array.isArray(masked)&&masked.length){
-    const words=masked.join("").split(" ").filter(w=>w.length>0);
-    if(words.length===1){wordLengthEl.textContent=words[0].length+" letters";}
-    else{wordLengthEl.textContent="("+words.map(w=>w.length).join(" + ")+") letters";}
-  } else if(wordLengthEl){wordLengthEl.textContent="";}
+  if(wordLengthEl)wordLengthEl.textContent="";
 }
 
 function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";const wli=document.getElementById("word-length-info");if(wli)wli.textContent="";toolbar.style.display="none";canvas.classList.add("not-drawer");}
