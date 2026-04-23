@@ -421,35 +421,7 @@ const G={
 fetch("words.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>G.words=d).catch(()=>{
   G.words=[{word:"cat",category:"animals",difficulty:"easy",score:100},{word:"sun",category:"nature",difficulty:"easy",score:100},{word:"elephant",category:"animals",difficulty:"medium",score:200},{word:"volcano",category:"nature",difficulty:"medium",score:200},{word:"narwhal",category:"animals",difficulty:"hard",score:300},{word:"pizza",category:"food",difficulty:"easy",score:100},{word:"dragon",category:"fantasy",difficulty:"medium",score:200},{word:"mountain",category:"nature",difficulty:"easy",score:150},{word:"guitar",category:"music",difficulty:"easy",score:100},{word:"astronaut",category:"space",difficulty:"hard",score:300},{word:"rainbow",category:"nature",difficulty:"easy",score:100},{word:"telescope",category:"space",difficulty:"medium",score:200},{word:"butterfly",category:"animals",difficulty:"medium",score:200},{word:"waterfall",category:"nature",difficulty:"medium",score:200},{word:"spaceship",category:"space",difficulty:"medium",score:200},{word:"cactus",category:"nature",difficulty:"easy",score:100},{word:"igloo",category:"places",difficulty:"medium",score:200},{word:"tornado",category:"nature",difficulty:"medium",score:200},{word:"submarine",category:"vehicles",difficulty:"hard",score:300},{word:"penguin",category:"animals",difficulty:"easy",score:100}];
 });
-function pickWords(){
-  let pool=G.selectedCategory?G.words.filter(w=>w.category===G.selectedCategory):[...G.words];
-  if(pool.length<3)pool=[...G.words];
-  shuffle(pool);
-  const e=pool.find(w=>w.difficulty==="easy"),m=pool.find(w=>w.difficulty==="medium"),h=pool.find(w=>w.difficulty==="hard");
-  const choices=[e,m,h].filter(Boolean);
-  for(const w of pool){if(choices.length>=3)break;if(!choices.includes(w))choices.push(w);}
-  return choices.slice(0,3);
-}
-
-// ══════════════════════════════════════════════════════════
-// PEERJS SIGNALING — replaces ntfy.sh
-// ─────────────────────────────────────────────────────────
-// How it works:
-//   HOST:   Creates a Peer with ID "skribblr-{PIN}"
-//           Listens for incoming connections from joiners.
-//
-//   JOINER: Enters the 6-digit PIN.
-//           Creates an anonymous Peer, then calls
-//           peer.connect("skribblr-{PIN}") to reach the host.
-//
-// PeerJS handles all the WebRTC offer/answer/ICE via its
-// free signaling server (0.peerjs.com) — no CORS, no rate
-// limits, no POST requests at all.
-// ══════════════════════════════════════════════════════════
-
-let hostPeer=null;   // host's own Peer object
-let joinerPeer=null; // joiner's own Peer object
-let hostRoomPin=null;
+function pickWords(){const pool=[...G.words];shuffle(pool);const e=pool.find(w=>w.difficulty==="easy"),m=pool.find(w=>w.difficulty==="medium"),h=pool.find(w=>w.difficulty==="hard");const choices=[e,m,h].filter(Boolean);for(const w of pool){if(choices.length>=3)break;if(!choices.includes(w))choices.push(w);}return choices.slice(0,3);}
 
 // ── NET ──
 function sendTo(id,msg){
@@ -755,8 +727,7 @@ function showGameScreen(){
 // ── TURN MANAGEMENT ──
 function beginTurn(){
   G.guessedThisRound=false;G.endTurnCalled=false;G.guessCount=0;
-  G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";
-  clearCanvas();broadcast({type:"clear"});
+  G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";clearCanvas();
   for(const id of Object.keys(G.auth)){G.auth[id].guessedThisRound=false;G.auth[id].roundPts=0;}
   for(const id of Object.keys(G.disp))G.disp[id].guessedThisRound=false;
   const drawerId=G.turnOrder[G.turnIndex];G.currentDrawer=drawerId;G.canDraw=(drawerId===G.myId);
@@ -819,7 +790,7 @@ function revealLetter(){
   if(!G.currentWord||G.currentDrawer!==G.myId)return;
   const word=G.currentWord.word;
   const unrev=word.split("").map((_,i)=>i).filter(i=>word[i]!==" "&&!G.revealedIndices.has(i)&&G.currentWordMasked[i]==="_");
-  if(unrev.length<=1)return;
+  if(!unrev.length)return;
   const idx=unrev[0|Math.random()*unrev.length];G.revealedIndices.add(idx);
   G.currentWordMasked=G.currentWordMasked.map((c,i)=>G.revealedIndices.has(i)?word[i]:c);
   updateWordDisplay(G.currentWordMasked,G.currentWord.category||"");
@@ -831,13 +802,8 @@ function applyHint(msg){G.currentWordMasked=[...msg.masked];if(msg.revealedIdx!=
 // ── TIMER ──
 function startTimer(){
   clearInterval(G.timerInterval);G.timeLeft=G.maxTime;renderTimer();
-  let hints=0;
-  const hintAt=[Math.floor(G.maxTime*.7),Math.floor(G.maxTime*.4),Math.floor(G.maxTime*.2)];
-  G.timerInterval=setInterval(()=>{
-    G.timeLeft--;renderTimer();
-    if(G.currentDrawer===G.myId&&hints<hintAt.length&&G.timeLeft<=hintAt[hints]){revealLetter();hints++;}
-    if(G.timeLeft<=0){clearInterval(G.timerInterval);if(G.isHost)endTurn(false);}
-  },1000);
+  let hints=0;const hintAt=[Math.floor(G.maxTime*.6),Math.floor(G.maxTime*.3)];
+  G.timerInterval=setInterval(()=>{G.timeLeft--;renderTimer();if(G.currentDrawer===G.myId&&hints<hintAt.length&&G.timeLeft<=hintAt[hints]){revealLetter();hints++;}if(G.timeLeft<=0){clearInterval(G.timerInterval);if(G.isHost)endTurn(false);}},1000);
 }
 function renderTimer(){
   timerNum.textContent=G.timeLeft;const pct=G.timeLeft/G.maxTime,circ=2*Math.PI*22;
@@ -845,12 +811,7 @@ function renderTimer(){
 }
 
 // ── SCORING ──
-function calcPts(timeLeft,maxTime,guessOrder){
-  const MAX_PTS=500,MIN_PTS=50;
-  const timeFactor=0.2+0.8*(timeLeft/maxTime);
-  const orderFactor=Math.max(0.4,1-guessOrder*0.15);
-  return Math.max(MIN_PTS,Math.round(MAX_PTS*timeFactor*orderFactor));
-}
+function calcPts(base,tl,mt,order){return Math.max(10,Math.round(base*Math.max(.3,1-order*.15)*(.4+.6*tl/mt)));}
 function checkGuess(text,fromId,fromName){
   if(!G.currentWord)return false;if(fromId===G.currentDrawer)return false;
   const a=G.auth[fromId];if(!a||a.guessedThisRound)return false;
