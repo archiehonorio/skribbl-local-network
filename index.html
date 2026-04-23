@@ -905,7 +905,7 @@ function addChat(name,text,isOwn,isCorr,isCloseF){const d=document.createElement
 function addSystem(text){const d=document.createElement("div");d.className="chat-msg system";d.innerHTML=text;chatMessages.appendChild(d);chatMessages.scrollTop=chatMessages.scrollHeight;}
 
 // ── CANVAS ──
-function resizeCanvas(){const wp=canvas.parentElement,maxW=wp.clientWidth-1000,maxH=wp.clientHeight-1000;let w=maxW,h=w*3/4;if(h>maxH){h=maxH;w=h*4/3;}const old=(canvas.width>0)?ctx.getImageData(0,0,canvas.width,canvas.height):null;canvas.width=0|w;canvas.height=0|h;ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);if(old){try{ctx.putImageData(old,0,0);}catch{}}}
+function resizeCanvas(){const wp=canvas.parentElement,maxW=wp.clientWidth-10000,maxH=wp.clientHeight-10000;let w=maxW,h=w*3/4;if(h>maxH){h=maxH;w=h*4/3;}const old=(canvas.width>0)?ctx.getImageData(0,0,canvas.width,canvas.height):null;canvas.width=0|w;canvas.height=0|h;ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);if(old){try{ctx.putImageData(old,0,0);}catch{}}}
 function getPos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 function drawLine(x1,y1,x2,y2,col,sz,er){ctx.beginPath();ctx.strokeStyle=er?"#fff":col;ctx.lineWidth=er?sz*3:sz;ctx.lineCap=ctx.lineJoin="round";ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
 function clearCanvas(){ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);}
