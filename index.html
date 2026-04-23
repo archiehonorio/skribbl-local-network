@@ -84,6 +84,8 @@
     .word-hint{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:center;}
     .letter-blank{display:inline-flex;align-items:center;justify-content:center;min-width:1.4rem;height:1.6rem;border-bottom:2px solid var(--text-muted);font-family:'Fredoka One',cursive;font-size:1.1rem;color:transparent;background:transparent;margin:0 1px;transition:all .3s;}
     .letter-blank.revealed{color:var(--accent3);border-color:var(--accent3);}
+    /* Space separator shown between words */
+    .letter-space{display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1.6rem;font-family:'Fredoka One',cursive;font-size:.85rem;color:var(--text-muted);margin:0 3px;border-bottom:none;}
     .word-category{font-size:.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;}
     .drawer-label{font-size:.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
     .drawer-name{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--accent4);}
@@ -125,7 +127,6 @@
       border-radius:var(--radius);
       overflow:hidden;
       box-shadow:0 8px 32px rgba(0,0,0,.4);
-      /* canvas fills this wrapper; wrapper size is set by JS */
       flex-shrink:0;
     }
     canvas{display:block;cursor:crosshair;touch-action:none;}
@@ -278,6 +279,7 @@
             <option value="sports">⚽ Sports</option>
             <option value="professions">👩‍⚕️ Professions</option>
             <option value="concepts">💡 Concepts</option>
+            <option value="anime">🌸 Anime</option>
           </select>
         </div>
 
@@ -691,13 +693,38 @@ function applyWordChosen(msg){
   if(!G.canDraw&&!G.guessedThisRound){chatInput.disabled=false;sendBtn.disabled=false;chatInput.placeholder="Type your guess...";}
   if(G.isHost)broadcastState();
 }
+
+// ── MASK: space chars become " " so guessers see a gap, letters become "_"
 function buildMask(w){return w.split("").map(c=>c===" "?" ":"_");}
+
+// ── WORD DISPLAY: renders blanks with visible space separators (—) between words
 function updateWordDisplay(masked,cat){
   if(!Array.isArray(masked)||!masked.length){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=cat?"Category: "+cat:"";return;}
-  wordDisplayEl.innerHTML=masked.map((c,i)=>{if(c===" ")return'<span class="letter-blank">&nbsp;&nbsp;</span>';const isRevealed=G.revealedIndices.has(i);let ch=c;if(G.canDraw&&G.currentWord)ch=G.currentWord.word[i];return`<span class="letter-blank${isRevealed?" revealed":""}">${esc(ch)}</span>`;}).join("");
-  if(G.canDraw&&G.currentWord)wordDisplayEl.innerHTML+=` <small style="color:var(--accent3);font-size:.7rem;">(${esc(G.currentWord.word)})</small>`;
-  const safeCat=(cat&&cat!=="undefined")?cat:"";wordCategoryEl.textContent=safeCat?"Category: "+safeCat:"";
+
+  // If the drawer knows the word, show the full word above
+  let fullWordHint="";
+  if(G.canDraw&&G.currentWord){fullWordHint=` <small style="color:var(--accent3);font-size:.7rem;">(${esc(G.currentWord.word)})</small>`;}
+
+  let html="";
+  masked.forEach((c,i)=>{
+    if(c===" "){
+      // Space between words: show a short dash separator so guessers know
+      html+=`<span class="letter-space">—</span>`;
+    } else {
+      const isRevealed=G.revealedIndices.has(i);
+      let displayChar="_";
+      if(isRevealed||G.canDraw){
+        displayChar=G.currentWord?G.currentWord.word[i]:c;
+      }
+      html+=`<span class="letter-blank${isRevealed?" revealed":""}">${esc(displayChar)}</span>`;
+    }
+  });
+
+  wordDisplayEl.innerHTML=html+fullWordHint;
+  const safeCat=(cat&&cat!=="undefined")?cat:"";
+  wordCategoryEl.textContent=safeCat?"Category: "+safeCat:"";
 }
+
 function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";toolbar.style.display="none";canvas.classList.add("not-drawer");}
 function updateDrawerUI(){
   if(G.currentDrawer===G.myId){drawerNameEl.textContent=G.myName+" (you)";canvas.classList.remove("not-drawer");toolbar.style.display="";}
@@ -709,6 +736,7 @@ function updateDrawerUI(){
 function revealLetter(){
   if(!G.currentWord||G.currentDrawer!==G.myId)return;
   const word=G.currentWord.word;
+  // Only reveal actual letter positions (not spaces)
   const unrev=word.split("").map((_,i)=>i).filter(i=>word[i]!==" "&&!G.revealedIndices.has(i)&&G.currentWordMasked[i]==="_");
   if(unrev.length<=1)return;
   const idx=unrev[0|Math.random()*unrev.length];G.revealedIndices.add(idx);
@@ -793,35 +821,20 @@ function addChat(name,text,isOwn,isCorr,isCloseF){const d=document.createElement
 function addSystem(text){const d=document.createElement("div");d.className="chat-msg system";d.innerHTML=text;chatMessages.appendChild(d);chatMessages.scrollTop=chatMessages.scrollHeight;}
 
 // ── CANVAS RESIZE ──
-// Targets ~70% of viewport height for the canvas (like skribbl.io),
-// then constrains by available column width, maintaining 4:3 aspect ratio.
 function resizeCanvas(){
   const ASPECT=4/3;
-  const CANVAS_TARGET_VH=0.70; // 70% of viewport height
-
-  // Available area inside the middle column
+  const CANVAS_TARGET_VH=0.70;
   const areaW=canvasArea.clientWidth;
   const areaH=canvasArea.clientHeight;
-
-  // Toolbar height (only if visible)
   const toolbarVisible=toolbar.style.display!=="none";
   const tbH=toolbarVisible?toolbar.offsetHeight+8:0;
-
-  // Padding in canvas-area (0.6rem * 2 top/bottom ≈ 20px, gap 0.5rem ≈ 8px)
   const padding=28;
-
-  // Target height = 70% of viewport, but can't exceed available area
   const maxH=areaH-tbH-padding;
   const targetH=Math.min(window.innerHeight*CANVAS_TARGET_VH,maxH);
-
-  // Derive width from height, but also can't exceed column width
   let h=targetH;
   let w=h*ASPECT;
   if(w>areaW-12){w=areaW-12;h=w/ASPECT;}
-
-  // Save old content
   const old=(canvas.width>0&&canvas.height>0)?ctx.getImageData(0,0,canvas.width,canvas.height):null;
-
   canvas.width=Math.floor(w);
   canvas.height=Math.floor(h);
   ctx.fillStyle="#fff";
