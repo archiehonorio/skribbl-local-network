@@ -80,16 +80,16 @@
     .timer-ring .bg{fill:none;stroke:var(--border);stroke-width:4;}
     .timer-ring .fg{fill:none;stroke-width:4;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .9s linear,stroke .5s;}
     .timer-ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1rem;color:var(--text);}
-    .word-display{display:flex;flex-direction:column;align-items:center;gap:.15rem;}
-    .word-hint{display:flex;gap:.4rem;align-items:flex-end;flex-wrap:wrap;justify-content:center;}
-    .word-group{display:inline-flex;flex-direction:column;align-items:center;gap:.1rem;}
-    .word-group-count{font-family:'Fredoka One',cursive;font-size:.68rem;color:var(--accent2);letter-spacing:.5px;}
+    .word-display{display:flex;flex-direction:row;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center;}
+    .word-hint{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;justify-content:center;}
+    .word-group{display:inline-flex;flex-direction:row;align-items:center;gap:0;}
+    .word-group-count{font-family:'Fredoka One',cursive;font-size:.78rem;color:var(--accent2);letter-spacing:.5px;margin-left:.35rem;}
     .word-group-blanks{display:flex;gap:0;}
     .letter-blank{display:inline-flex;align-items:center;justify-content:center;min-width:1.4rem;height:1.6rem;border-bottom:2px solid var(--text-muted);font-family:'Fredoka One',cursive;font-size:1.1rem;color:transparent;background:transparent;margin:0 1px;transition:all .3s;}
     .letter-blank.revealed{color:var(--accent3);border-color:var(--accent3);}
-    .letter-space{display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1.6rem;font-family:'Fredoka One',cursive;font-size:.85rem;color:var(--text-muted);margin:0 3px;border-bottom:none;align-self:flex-end;}
+    .letter-space{display:inline-flex;align-items:center;justify-content:center;width:.8rem;height:1.6rem;font-family:'Fredoka One',cursive;font-size:.85rem;color:var(--text-muted);margin:0 2px;border-bottom:none;}
     .word-category{font-size:.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;}
-    .word-length-info{font-size:.65rem;color:var(--text-muted);font-weight:700;letter-spacing:.5px;margin-top:.1rem;}
+    .word-length-info{font-size:.65rem;color:var(--text-muted);font-weight:700;letter-spacing:.5px;}
     .drawer-label{font-size:.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
     .drawer-name{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--accent4);}
 
@@ -336,7 +336,7 @@
       </svg>
       <div class="num" id="timer-num">80</div>
     </div>
-    <div class="word-display"><div id="word-display" class="word-hint">? ? ?</div><div id="word-category" class="word-category"></div><div id="word-length-info" class="word-length-info"></div></div>
+    <div class="word-display"><div id="word-display" class="word-hint">? ? ?</div><div id="word-category" class="word-category"></div></div>
     <div class="header-right"><div><div class="drawer-label">Drawing:</div><div id="drawer-name" class="drawer-name">—</div></div></div>
   </header>
 
@@ -700,48 +700,52 @@ function applyWordChosen(msg){
 // ── MASK: space chars become " " so guessers see a gap, letters become "_"
 function buildMask(w){return w.split("").map(c=>c===" "?" ":"_");}
 
-// ── WORD DISPLAY: each word is a group with its count floating above the blanks
+// ── WORD DISPLAY: blanks · count · separator · category all in one horizontal row
 function updateWordDisplay(masked,cat){
   if(!Array.isArray(masked)||!masked.length){
     wordDisplayEl.innerHTML="? ? ?";
-    wordCategoryEl.textContent=cat?"Category: "+cat:"";
-    const wli=document.getElementById("word-length-info");if(wli)wli.textContent="";
+    wordCategoryEl.textContent="";
     return;
   }
 
-  // Split masked array into word segments separated by spaces
-  const segments=[];let cur=[];let curStart=0;
+  // Split into word segments by spaces
+  const segments=[];let cur=[];
   masked.forEach((c,i)=>{
-    if(c===" "){if(cur.length)segments.push({chars:cur,start:curStart});cur=[];curStart=i+1;}
+    if(c===" "){if(cur.length)segments.push(cur);cur=[];}
     else{cur.push({c,i});}
   });
-  if(cur.length)segments.push({chars:cur,start:curStart});
+  if(cur.length)segments.push(cur);
+
+  // Total letter count across all words
+  const totalCount=segments.reduce((s,seg)=>s+seg.length,0);
+  const wordBreakdown=segments.length>1?segments.map(s=>s.length).join("+"):null;
+  const countLabel=wordBreakdown?`${totalCount} (${wordBreakdown})`:`${totalCount}`;
 
   let html="";
   segments.forEach((seg,si)=>{
     if(si>0)html+=`<span class="letter-space">—</span>`;
-    const count=seg.chars.length;
     let blanksHtml="";
-    seg.chars.forEach(({c,i})=>{
+    seg.forEach(({c,i})=>{
       const isRevealed=G.revealedIndices.has(i);
       let displayChar="_";
       if(isRevealed||(G.canDraw&&G.currentWord))displayChar=G.currentWord?G.currentWord.word[i]:c;
       blanksHtml+=`<span class="letter-blank${isRevealed?" revealed":""}">${esc(displayChar)}</span>`;
     });
-    html+=`<span class="word-group"><span class="word-group-count">${count}</span><span class="word-group-blanks">${blanksHtml}</span></span>`;
+    html+=`<span class="word-group-blanks">${blanksHtml}</span>`;
   });
+
+  // Count badge inline after blanks
+  html+=`<span class="word-group-count">${countLabel}</span>`;
 
   // Drawer hint
   if(G.canDraw&&G.currentWord)html+=` <small style="color:var(--accent3);font-size:.7rem;">(${esc(G.currentWord.word)})</small>`;
 
   wordDisplayEl.innerHTML=html;
   const safeCat=(cat&&cat!=="undefined")?cat:"";
-  wordCategoryEl.textContent=safeCat?"Category: "+safeCat:"";
-  const wordLengthEl=document.getElementById("word-length-info");
-  if(wordLengthEl)wordLengthEl.textContent="";
+  wordCategoryEl.textContent=safeCat?safeCat:"";
 }
 
-function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";const wli=document.getElementById("word-length-info");if(wli)wli.textContent="";toolbar.style.display="none";canvas.classList.add("not-drawer");}
+function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";toolbar.style.display="none";canvas.classList.add("not-drawer");}
 function updateDrawerUI(){
   if(G.currentDrawer===G.myId){drawerNameEl.textContent=G.myName+" (you)";canvas.classList.remove("not-drawer");toolbar.style.display="";}
   else{drawerNameEl.textContent=nameOf(G.currentDrawer)||"?";canvas.classList.add("not-drawer");toolbar.style.display="none";}
