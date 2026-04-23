@@ -87,6 +87,7 @@
     /* Space separator shown between words */
     .letter-space{display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1.6rem;font-family:'Fredoka One',cursive;font-size:.85rem;color:var(--text-muted);margin:0 3px;border-bottom:none;}
     .word-category{font-size:.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+    .word-length-info{font-size:.65rem;color:var(--text-muted);font-weight:700;letter-spacing:.5px;margin-top:.1rem;}
     .drawer-label{font-size:.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
     .drawer-name{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--accent4);}
 
@@ -161,10 +162,10 @@
     .chat-msg.system{color:var(--text-muted);font-style:italic;font-size:.72rem;}
     .chat-msg.close .sender{color:var(--accent5);}
     .chat-msg.correct-reveal{background:rgba(107,203,119,.18);border:1px solid rgba(107,203,119,.4);color:var(--accent3);font-weight:700;border-radius:6px;padding:.3rem .5rem;}
-    .chat-input-row{display:flex;gap:.4rem;}
-    .chat-input-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:600;padding:.5rem .7rem;outline:none;}
+    .chat-input-row{display:flex;gap:.4rem;padding:0 .2rem .2rem;}
+    .chat-input-row input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:600;padding:.5rem .7rem;outline:none;}
     .chat-input-row input:focus{border-color:var(--accent4);}
-    .chat-input-row button{background:var(--accent4);border:none;border-radius:var(--radius-sm);color:#fff;cursor:pointer;font-family:'Fredoka One',cursive;font-size:.85rem;padding:.5rem .8rem;}
+    .chat-input-row button{flex-shrink:0;background:var(--accent4);border:none;border-radius:var(--radius-sm);color:#fff;cursor:pointer;font-family:'Fredoka One',cursive;font-size:.85rem;padding:.5rem .8rem;}
 
     /* ── OVERLAYS ── */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px);}
@@ -333,7 +334,7 @@
       </svg>
       <div class="num" id="timer-num">80</div>
     </div>
-    <div class="word-display"><div id="word-display" class="word-hint">? ? ?</div><div id="word-category" class="word-category"></div></div>
+    <div class="word-display"><div id="word-display" class="word-hint">? ? ?</div><div id="word-category" class="word-category"></div><div id="word-length-info" class="word-length-info"></div></div>
     <div class="header-right"><div><div class="drawer-label">Drawing:</div><div id="drawer-name" class="drawer-name">—</div></div></div>
   </header>
 
@@ -723,9 +724,16 @@ function updateWordDisplay(masked,cat){
   wordDisplayEl.innerHTML=html+fullWordHint;
   const safeCat=(cat&&cat!=="undefined")?cat:"";
   wordCategoryEl.textContent=safeCat?"Category: "+safeCat:"";
+  // Show letter count per word e.g. "(4 letters)" or "(4, 3 letters)" for multi-word
+  const wordLengthEl=document.getElementById("word-length-info");
+  if(wordLengthEl&&Array.isArray(masked)&&masked.length){
+    const words=masked.join("").split(" ").filter(w=>w.length>0);
+    if(words.length===1){wordLengthEl.textContent=words[0].length+" letters";}
+    else{wordLengthEl.textContent="("+words.map(w=>w.length).join(" + ")+") letters";}
+  } else if(wordLengthEl){wordLengthEl.textContent="";}
 }
 
-function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";toolbar.style.display="none";canvas.classList.add("not-drawer");}
+function showWaitingUI(name){wordDisplayEl.textContent="? ? ?";wordCategoryEl.textContent=esc(name)+" is choosing...";const wli=document.getElementById("word-length-info");if(wli)wli.textContent="";toolbar.style.display="none";canvas.classList.add("not-drawer");}
 function updateDrawerUI(){
   if(G.currentDrawer===G.myId){drawerNameEl.textContent=G.myName+" (you)";canvas.classList.remove("not-drawer");toolbar.style.display="";}
   else{drawerNameEl.textContent=nameOf(G.currentDrawer)||"?";canvas.classList.add("not-drawer");toolbar.style.display="none";}
