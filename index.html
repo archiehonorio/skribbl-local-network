@@ -6,26 +6,24 @@
   <title>G Skribblr na</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <!-- PeerJS: replaces ntfy.sh for signaling — no CORS, no rate limits -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
   <style>
-    /* ── RESET & VARS ── */
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     :root{
       --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e334d;
       --text:#e8eaf6;--text-muted:#7c84a8;
       --accent:#ff6b6b;--accent2:#ffd93d;--accent3:#6bcb77;--accent4:#4d96ff;--accent5:#c77dff;
       --radius:14px;--radius-sm:8px;
+      --header-h:60px;
+      --toolbar-h:52px;
     }
     body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 
-    /* ── SCREENS ── */
     .screen{display:none;min-height:100vh;}
     .screen.active{display:flex;}
     #lobby-screen{align-items:center;justify-content:center;padding:1rem;background:radial-gradient(ellipse at 20% 50%,rgba(77,150,255,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(107,203,119,.06) 0%,transparent 50%),var(--bg);}
-    #game-screen{flex-direction:column;}
+    #game-screen{flex-direction:column;height:100vh;overflow:hidden;}
 
-    /* ── LOBBY ── */
     .logo{text-align:center;margin-bottom:1.5rem;}
     .logo h1{font-family:'Fredoka One',cursive;font-size:2.8rem;background:linear-gradient(135deg,var(--accent4),var(--accent5));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px;}
     .logo p{color:var(--text-muted);font-size:.85rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-top:.2rem;}
@@ -50,7 +48,6 @@
     .status-msg{font-size:.8rem;font-weight:700;margin-top:.8rem;text-align:center;min-height:1.2rem;}
     .status-msg.ok{color:var(--accent3);} .status-msg.err{color:var(--accent);}
 
-    /* ── PIN INPUT ── */
     .pin-display{display:flex;justify-content:center;gap:.5rem;margin:.6rem 0;}
     .pin-digit{width:52px;height:64px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;font-family:'Fredoka One',cursive;font-size:2rem;color:var(--accent2);text-align:center;outline:none;caret-color:var(--accent4);transition:border-color .15s,box-shadow .15s;}
     .pin-digit:focus{border-color:var(--accent4);box-shadow:0 0 0 3px rgba(77,150,255,.2);}
@@ -59,19 +56,22 @@
     .room-pin-big:hover{background:rgba(255,217,61,.07);}
     .room-pin-hint{font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:-.2rem;margin-bottom:.6rem;}
 
-    /* ── PLAYER CHIPS ── */
     .players-list{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0;}
     .player-chip{display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:.3rem .7rem;font-size:.8rem;font-weight:700;}
     .player-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);}
     .player-chip.host .dot{background:var(--accent2);}
 
-    /* ── JOIN STATUS ── */
     .join-status-card{text-align:center;padding:1.2rem 0;}
     .join-spinner{font-size:1.8rem;animation:spin 1.2s linear infinite;display:inline-block;}
     @keyframes spin{to{transform:rotate(360deg);}}
 
-    /* ── GAME HEADER ── */
-    .game-header{display:grid;grid-template-columns:1fr auto auto 1fr;align-items:center;gap:.5rem;background:var(--surface);border-bottom:1px solid var(--border);padding:.5rem 1rem;}
+    /* ── GAME LAYOUT ── */
+    .game-header{
+      height:var(--header-h);
+      display:grid;grid-template-columns:1fr auto auto 1fr;align-items:center;gap:.5rem;
+      background:var(--surface);border-bottom:1px solid var(--border);padding:.5rem 1rem;
+      flex-shrink:0;
+    }
     .header-left,.header-right{display:flex;align-items:center;}
     .header-right{justify-content:flex-end;}
     .round-badge{background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:.3rem .8rem;font-size:.78rem;font-weight:800;color:var(--text-muted);}
@@ -88,11 +88,17 @@
     .drawer-label{font-size:.65rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
     .drawer-name{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--accent4);}
 
-    /* ── GAME BODY ── */
-    .game-body{display:grid;grid-template-columns:180px 1fr 220px;flex:1;overflow:hidden;height:calc(100vh - 60px);}
+    /* ── GAME BODY: 3-col layout filling remaining height ── */
+    .game-body{
+      display:grid;
+      grid-template-columns:160px 1fr 220px;
+      flex:1;
+      min-height:0;
+      overflow:hidden;
+    }
     .scoreboard,.chat-panel{background:var(--surface);border:1px solid var(--border);overflow-y:auto;padding:.8rem;}
-    .scoreboard{border-top:none;border-left:none;}
-    .chat-panel{border-top:none;border-right:none;display:flex;flex-direction:column;}
+    .scoreboard{border-top:none;border-left:none;border-bottom:none;}
+    .chat-panel{border-top:none;border-right:none;border-bottom:none;display:flex;flex-direction:column;}
     .scoreboard h3,.chat-panel h3{font-family:'Fredoka One',cursive;font-size:.95rem;color:var(--text-muted);margin-bottom:.6rem;}
     .score-list{display:flex;flex-direction:column;gap:.3rem;}
     .score-item{display:grid;grid-template-columns:1.4rem 1fr auto;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.4rem .5rem;transition:all .3s;}
@@ -104,14 +110,34 @@
     .score-item.guessed .score-name::after{content:' ✓';color:var(--accent3);}
     .score-pts{font-family:'Fredoka One',cursive;font-size:.9rem;color:var(--accent4);}
 
-    /* ── CANVAS ── */
-    .canvas-area{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;gap:.7rem;background:var(--bg);}
-    .canvas-wrapper{border-radius:var(--radius);overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+    /* ── CANVAS AREA ── */
+    .canvas-area{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:.6rem;
+      gap:.5rem;
+      background:var(--bg);
+      overflow:hidden;
+    }
+    .canvas-wrapper{
+      border-radius:var(--radius);
+      overflow:hidden;
+      box-shadow:0 8px 32px rgba(0,0,0,.4);
+      /* canvas fills this wrapper; wrapper size is set by JS */
+      flex-shrink:0;
+    }
     canvas{display:block;cursor:crosshair;touch-action:none;}
     canvas.not-drawer{cursor:default;}
 
     /* ── TOOLBAR ── */
-    .toolbar{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .7rem;}
+    .toolbar{
+      display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:.4rem .6rem;
+      flex-shrink:0;
+    }
     .colors{display:flex;flex-wrap:wrap;gap:.3rem;max-width:160px;}
     .color-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s;}
     .color-swatch:hover{transform:scale(1.2);}
@@ -167,17 +193,15 @@
     .toast.error{border-color:var(--accent);color:var(--accent);}
     @keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
 
-    /* ── MISC ── */
     .room-flow{display:flex;flex-direction:column;gap:.75rem;margin-top:1rem;}
     .peer-status{font-size:.72rem;color:var(--text-muted);text-align:center;padding:.3rem;border-radius:6px;background:var(--surface2);}
     .peer-status.ok{color:var(--accent3);}
     .peer-status.err{color:var(--accent);}
 
-    /* ── RESPONSIVE ── */
     @media(max-width:700px){
       .game-body{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}
       .scoreboard{display:none;}
-      .chat-panel{height:160px;}
+      .chat-panel{height:140px;border:none;border-top:1px solid var(--border);}
     }
   </style>
 </head>
@@ -196,7 +220,6 @@
         <input id="name-input" type="text" placeholder="e.g. Picasso" maxlength="20"/>
       </div>
 
-      <!-- ── INITIAL CHOICE ── -->
       <div id="initial-btns">
         <button id="create-btn" class="btn btn-primary" style="width:100%;">🎨 Create a Room</button>
         <div class="divider">or join with a PIN</div>
@@ -216,7 +239,6 @@
         <div id="peer-status" class="peer-status" style="margin-top:.5rem;display:none;"></div>
       </div>
 
-      <!-- ══ HOST PANEL ══ -->
       <div id="host-section" style="display:none;" class="room-flow">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
           <div class="input-group">
@@ -275,7 +297,6 @@
         </div>
       </div>
 
-      <!-- ══ JOIN PANEL ══ -->
       <div id="join-section" style="display:none;" class="room-flow">
         <div id="join-connecting" class="join-status-card">
           <div class="join-spinner">🔄</div>
@@ -313,10 +334,14 @@
     <div class="word-display"><div id="word-display" class="word-hint">? ? ?</div><div id="word-category" class="word-category"></div></div>
     <div class="header-right"><div><div class="drawer-label">Drawing:</div><div id="drawer-name" class="drawer-name">—</div></div></div>
   </header>
+
   <div class="game-body">
     <aside class="scoreboard"><h3>🏆 Scores</h3><div id="score-list" class="score-list"></div></aside>
-    <main class="canvas-area">
-      <div class="canvas-wrapper"><canvas id="game-canvas"></canvas></div>
+
+    <main class="canvas-area" id="canvas-area">
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="game-canvas"></canvas>
+      </div>
       <div id="toolbar" class="toolbar" style="display:none;">
         <div id="colors" class="colors"></div>
         <div class="tool-sep"></div>
@@ -329,6 +354,7 @@
         <button id="clear-btn" class="tool-btn clear-btn" title="Clear">🗑️ Clear</button>
       </div>
     </main>
+
     <aside class="chat-panel">
       <h3>💬 Guesses</h3>
       <div id="chat-messages" class="chat-messages"></div>
@@ -379,13 +405,13 @@ function toast(t,c="info",dur=3000){const e=document.createElement("div");e.clas
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
 function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=a[i-1]===b[j-1]?d[i-1][j-1]:1+Math.min(d[i-1][j],d[i][j-1],d[i-1][j-1]);return d[a.length][b.length];}
 
-// ── DOM REFS ──
 const nameInput=$("name-input"),roundsInput=$("rounds-input"),lobbyStatus=$("lobby-status");
 const toolbar=$("toolbar"),chatInput=$("chat-input"),chatMessages=$("chat-messages"),sendBtn=$("send-btn");
 const roundLabel=$("round-label"),totalRoundsLabel=$("total-rounds-label");
 const timerNum=$("timer-num"),timerFg=$("timer-fg");
 const wordDisplayEl=$("word-display"),wordCategoryEl=$("word-category"),drawerNameEl=$("drawer-name");
 const scoreList=$("score-list"),canvas=$("game-canvas"),ctx=canvas.getContext("2d");
+const canvasWrapper=$("canvas-wrapper"),canvasArea=$("canvas-area");
 const wordChoiceOverlay=$("word-choice-overlay"),wordChoicesEl=$("word-choices");
 const roundEndOverlay=$("round-end-overlay"),roundEndWordEl=$("round-end-word");
 const roundScoresList=$("round-scores-list"),roundEndTitle=$("round-end-title");
@@ -399,7 +425,6 @@ const startGameBtn=$("start-game-btn"),playerChips=$("player-chips"),slotsGrid=$
 const joinConnecting=$("join-connecting"),joinConnected=$("join-connected");
 const joinFailed=$("join-failed"),joinFailMsg=$("join-fail-msg"),joinRetryBtn=$("join-retry-btn");
 const joinStepMsg=$("join-step-msg"),pinUploadStatus=$("pin-upload-status");
-const peerStatusEl=$("peer-status");
 
 const G={
   myName:"",isHost:false,myId:null,
@@ -417,7 +442,6 @@ const G={
   isDrawing:false,lastX:null,lastY:null,
 };
 
-// ── WORDS ──
 fetch("words.json").then(r=>r.ok?r.json():Promise.reject()).then(d=>G.words=d).catch(()=>{
   G.words=[{word:"cat",category:"animals",difficulty:"easy",score:100},{word:"sun",category:"nature",difficulty:"easy",score:100},{word:"elephant",category:"animals",difficulty:"medium",score:200},{word:"volcano",category:"nature",difficulty:"medium",score:200},{word:"narwhal",category:"animals",difficulty:"hard",score:300},{word:"pizza",category:"food",difficulty:"easy",score:100},{word:"dragon",category:"fantasy",difficulty:"medium",score:200},{word:"mountain",category:"nature",difficulty:"easy",score:150},{word:"guitar",category:"music",difficulty:"easy",score:100},{word:"astronaut",category:"space",difficulty:"hard",score:300},{word:"rainbow",category:"nature",difficulty:"easy",score:100},{word:"telescope",category:"space",difficulty:"medium",score:200},{word:"butterfly",category:"animals",difficulty:"medium",score:200},{word:"waterfall",category:"nature",difficulty:"medium",score:200},{word:"spaceship",category:"space",difficulty:"medium",score:200},{word:"cactus",category:"nature",difficulty:"easy",score:100},{word:"igloo",category:"places",difficulty:"medium",score:200},{word:"tornado",category:"nature",difficulty:"medium",score:200},{word:"submarine",category:"vehicles",difficulty:"hard",score:300},{word:"penguin",category:"animals",difficulty:"easy",score:100}];
 });
@@ -431,40 +455,15 @@ function pickWords(){
   return choices.slice(0,3);
 }
 
-// ══════════════════════════════════════════════════════════
-// PEERJS SIGNALING — replaces ntfy.sh
-// ─────────────────────────────────────────────────────────
-// How it works:
-//   HOST:   Creates a Peer with ID "skribblr-{PIN}"
-//           Listens for incoming connections from joiners.
-//
-//   JOINER: Enters the 6-digit PIN.
-//           Creates an anonymous Peer, then calls
-//           peer.connect("skribblr-{PIN}") to reach the host.
-//
-// PeerJS handles all the WebRTC offer/answer/ICE via its
-// free signaling server (0.peerjs.com) — no CORS, no rate
-// limits, no POST requests at all.
-// ══════════════════════════════════════════════════════════
-
-let hostPeer=null;   // host's own Peer object
-let joinerPeer=null; // joiner's own Peer object
+let hostPeer=null;
+let joinerPeer=null;
 let hostRoomPin=null;
 
-// ── NET ──
-function sendTo(id,msg){
-  const p=G.peers[id];
-  if(p&&p.conn&&p.conn.open)p.conn.send(JSON.stringify(msg));
-}
+function sendTo(id,msg){const p=G.peers[id];if(p&&p.conn&&p.conn.open)p.conn.send(JSON.stringify(msg));}
 function sendToHost(msg){sendTo("host",msg);}
-function broadcast(msg,excl=null){
-  for(const[id,p]of Object.entries(G.peers)){
-    if(id!==excl&&p.conn&&p.conn.open)p.conn.send(JSON.stringify(msg));
-  }
-}
+function broadcast(msg,excl=null){for(const[id,p]of Object.entries(G.peers)){if(id!==excl&&p.conn&&p.conn.open)p.conn.send(JSON.stringify(msg));}}
 function nameOf(id){if(id===G.myId)return G.myName;return G.disp[id]?.name||G.peers[id]?.name||id;}
 
-// ── STATE SYNC ──
 function broadcastState(){
   if(!G.isHost)return;
   broadcast({type:"ROUND_SYNC",round:G.currentRound,totalRounds:G.totalRounds,timeLeft:G.timeLeft,drawer:G.currentDrawer,masked:G.currentWordMasked,category:G.currentCategory,revealedIndices:[...G.revealedIndices],disp:G.disp,turnOrder:G.turnOrder,turnIndex:G.turnIndex});
@@ -480,146 +479,70 @@ function applyRoundSync(msg){
 }
 function pushScores(){if(!G.isHost)return;broadcast({type:"score-update",disp:G.disp});}
 
-// ── HOST: open room via PeerJS ──
 function openLobby(){
   genRoomBtn.disabled=true;genRoomBtn.textContent="Connecting…";
   pinUploadStatus.textContent="Connecting to PeerJS signaling server…";
-
   hostRoomPin=String(Math.floor(100000+Math.random()*900000));
   const peerId="skribblr-"+hostRoomPin;
-
   if(hostPeer){try{hostPeer.destroy();}catch{}}
   hostPeer=new Peer(peerId);
-
   hostPeer.on("open",id=>{
     hostPinDisplay.textContent=hostRoomPin;
     hostPinArea.style.display="";
-    genRoomBtn.disabled=false;
-    genRoomBtn.textContent="🔄 Regenerate PIN";
+    genRoomBtn.disabled=false;genRoomBtn.textContent="🔄 Regenerate PIN";
     pinUploadStatus.textContent="✅ Room ready! Share PIN "+hostRoomPin;
     setStatus("Share PIN "+hostRoomPin+" — players just type it!","ok");
     updatePlayerChips();
   });
-
   hostPeer.on("connection",conn=>{
-    const joinerId=conn.peer; // e.g. "skribblr-joiner-XXXXXXXX"
-    // derive a short stable ID from the conn.peer string
     const shortId="p_"+conn.peer.replace(/[^a-z0-9]/gi,"").slice(-8);
     G.peers[shortId]={name:"",conn};
-
-    conn.on("open",()=>{
-      // Tell the joiner their assigned shortId
-      conn.send(JSON.stringify({type:"assign-id",yourId:shortId}));
-      updateSlotsUI();updatePlayerChips();
-    });
+    conn.on("open",()=>{conn.send(JSON.stringify({type:"assign-id",yourId:shortId}));updateSlotsUI();updatePlayerChips();});
     conn.on("data",raw=>onMsg(raw,shortId));
-    conn.on("close",()=>{
-      delete G.peers[shortId];updateSlotsUI();updatePlayerChips();
-      setStatus(Object.values(G.peers).filter(p=>p.name).length+" player(s) in lobby","ok");
-    });
+    conn.on("close",()=>{delete G.peers[shortId];updateSlotsUI();updatePlayerChips();setStatus(Object.values(G.peers).filter(p=>p.name).length+" player(s) in lobby","ok");});
     conn.on("error",err=>console.warn("Peer conn error:",err));
   });
-
   hostPeer.on("error",err=>{
     console.error("PeerJS host error:",err);
-    if(err.type==="unavailable-id"){
-      // PIN collision — regenerate
-      pinUploadStatus.textContent="PIN taken, regenerating…";
-      setTimeout(openLobby,500);
-    }else{
-      pinUploadStatus.textContent="⚠️ PeerJS error: "+err.message;
-      genRoomBtn.disabled=false;genRoomBtn.textContent="🔑 Generate Room PIN";
-      setStatus("Connection error — try again","err");
-    }
+    if(err.type==="unavailable-id"){pinUploadStatus.textContent="PIN taken, regenerating…";setTimeout(openLobby,500);}
+    else{pinUploadStatus.textContent="⚠️ PeerJS error: "+err.message;genRoomBtn.disabled=false;genRoomBtn.textContent="🔑 Generate Room PIN";setStatus("Connection error — try again","err");}
   });
 }
 
-// ── JOINER: connect to host via PeerJS ──
 async function joinWithPin(pin){
   if(pin.length!==6||!/^\d{6}$/.test(pin)){setStatus("Enter a valid 6-digit PIN","err");return;}
-
-  initialBtns.style.display="none";
-  joinSection.style.display="";
+  initialBtns.style.display="none";joinSection.style.display="";
   joinConnecting.style.display="";joinConnected.style.display="none";joinFailed.style.display="none";
   joinStepMsg.textContent="Connecting to PeerJS…";
-
   if(joinerPeer){try{joinerPeer.destroy();}catch{}}
-
-  // Joiner gets a random peer ID
   joinerPeer=new Peer();
-
   joinerPeer.on("open",myPeerId=>{
     joinStepMsg.textContent="Reaching host room "+pin+"…";
     const hostPeerId="skribblr-"+pin;
     const conn=joinerPeer.connect(hostPeerId,{reliable:true});
     G.peers["host"]={name:"Host",conn};
-
-    conn.on("open",()=>{
-      joinStepMsg.textContent="Connected! Introducing…";
-      // Wait for assign-id before sending join
-    });
-
+    conn.on("open",()=>{joinStepMsg.textContent="Connected! Introducing…";});
     conn.on("data",raw=>onMsg(raw,"host"));
-
-    conn.on("close",()=>{
-      if(!gameScreen.classList.contains("active")){
-        joinConnected.style.display="none";
-        joinFailed.style.display="";
-        joinFailMsg.textContent="Disconnected from host.";
-      }
-    });
-
-    conn.on("error",err=>{
-      joinConnecting.style.display="none";
-      joinFailed.style.display="";
-      joinFailMsg.textContent="Connection error: "+err.message;
-      setStatus("Connection failed","err");
-    });
-
-    // Timeout if host doesn't respond
-    setTimeout(()=>{
-      if(joinConnecting.style.display!=="none"){
-        joinConnecting.style.display="none";
-        joinFailed.style.display="";
-        joinFailMsg.textContent="Host not found. Check the PIN and try again.";
-        setStatus("Connection timed out","err");
-      }
-    },12000);
+    conn.on("close",()=>{if(!gameScreen.classList.contains("active")){joinConnected.style.display="none";joinFailed.style.display="";joinFailMsg.textContent="Disconnected from host.";}});
+    conn.on("error",err=>{joinConnecting.style.display="none";joinFailed.style.display="";joinFailMsg.textContent="Connection error: "+err.message;setStatus("Connection failed","err");});
+    setTimeout(()=>{if(joinConnecting.style.display!=="none"){joinConnecting.style.display="none";joinFailed.style.display="";joinFailMsg.textContent="Host not found. Check the PIN and try again.";setStatus("Connection timed out","err");}},12000);
   });
-
   joinerPeer.on("error",err=>{
     console.error("PeerJS joiner error:",err);
-    joinConnecting.style.display="none";
-    joinFailed.style.display="";
-    joinFailMsg.textContent=err.type==="peer-unavailable"
-      ?"Room not found. Check the PIN and try again."
-      :"PeerJS error: "+err.message;
+    joinConnecting.style.display="none";joinFailed.style.display="";
+    joinFailMsg.textContent=err.type==="peer-unavailable"?"Room not found. Check the PIN and try again.":"PeerJS error: "+err.message;
     setStatus("Connection failed","err");
   });
 }
 
-// Pin input wiring — auto-advance on digit entry
 const pinInputs=Array.from({length:6},(_,i)=>$("pin"+i));
 pinInputs.forEach((el,i)=>{
-  el.addEventListener('input',e=>{
-    el.value=el.value.replace(/\D/g,"").slice(0,1);
-    if(el.value)el.classList.add("filled");else el.classList.remove("filled");
-    if(el.value&&i<5)pinInputs[i+1].focus();
-  });
-  el.addEventListener('keydown',e=>{
-    if(e.key==="Backspace"&&!el.value&&i>0)pinInputs[i-1].focus();
-    if(e.key==="Enter")joinBtn.click();
-  });
-  el.addEventListener('paste',e=>{
-    e.preventDefault();
-    const text=(e.clipboardData||window.clipboardData).getData("text").replace(/\D/g,"").slice(0,6);
-    text.split("").forEach((ch,j)=>{if(pinInputs[i+j]){pinInputs[i+j].value=ch;pinInputs[i+j].classList.add("filled");}});
-    const next=Math.min(i+text.length,5);pinInputs[next].focus();
-  });
+  el.addEventListener('input',e=>{el.value=el.value.replace(/\D/g,"").slice(0,1);if(el.value)el.classList.add("filled");else el.classList.remove("filled");if(el.value&&i<5)pinInputs[i+1].focus();});
+  el.addEventListener('keydown',e=>{if(e.key==="Backspace"&&!el.value&&i>0)pinInputs[i-1].focus();if(e.key==="Enter")joinBtn.click();});
+  el.addEventListener('paste',e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData("text").replace(/\D/g,"").slice(0,6);text.split("").forEach((ch,j)=>{if(pinInputs[i+j]){pinInputs[i+j].value=ch;pinInputs[i+j].classList.add("filled");}});const next=Math.min(i+text.length,5);pinInputs[next].focus();});
 });
 function getEnteredPin(){return pinInputs.map(el=>el.value).join("");}
 
-// ── BUTTON HANDLERS ──
 createBtn.addEventListener("click",()=>{
   const name=nameInput.value.trim();if(!name){setStatus("Enter your name first","err");return;}
   G.myName=name;G.isHost=true;G.myId="host";
@@ -630,26 +553,17 @@ createBtn.addEventListener("click",()=>{
 joinBtn.addEventListener("click",()=>{
   const name=nameInput.value.trim();if(!name){setStatus("Enter your name first","err");return;}
   const pin=getEnteredPin();if(pin.length!==6){setStatus("Enter the full 6-digit PIN","err");pinInputs[pin.length]?.focus();return;}
-  G.myName=name;G.isHost=false;
-  createBtn.disabled=true;joinBtn.disabled=true;
-  joinWithPin(pin);
+  G.myName=name;G.isHost=false;createBtn.disabled=true;joinBtn.disabled=true;joinWithPin(pin);
 });
 genRoomBtn.addEventListener("click",()=>{
-  G.totalRounds=parseInt(roundsInput.value)||3;
-  G.maxTime=parseInt($("timer-input").value)||80;
-  G.selectedCategory=$("category-input").value||"";
-  openLobby();
+  G.totalRounds=parseInt(roundsInput.value)||3;G.maxTime=parseInt($("timer-input").value)||80;G.selectedCategory=$("category-input").value||"";openLobby();
 });
-hostPinDisplay.addEventListener("click",()=>{
-  navigator.clipboard.writeText(hostRoomPin).then(()=>toast("PIN copied!","success")).catch(()=>{});
-});
+hostPinDisplay.addEventListener("click",()=>{navigator.clipboard.writeText(hostRoomPin).then(()=>toast("PIN copied!","success")).catch(()=>{});});
 startGameBtn.addEventListener("click",()=>{
   const conn=Object.keys(G.peers).filter(id=>G.peers[id].name&&G.peers[id].conn&&G.peers[id].conn.open);
   if(!conn.length){setStatus("No players connected yet","err");return;}
   G.turnOrder=shuffle(["host",...conn]);G.turnIndex=0;G.currentRound=1;
-  const init={type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:1,maxTime:G.maxTime,
-    selectedCategory:G.selectedCategory,
-    peerMap:Object.fromEntries(conn.map(id=>[id,{name:G.peers[id].name}])),hostName:G.myName};
+  const init={type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:1,maxTime:G.maxTime,selectedCategory:G.selectedCategory,peerMap:Object.fromEntries(conn.map(id=>[id,{name:G.peers[id].name}])),hostName:G.myName};
   for(const id of conn)sendTo(id,{...init,yourId:id});
   applyGameInit(init);beginTurn();
 });
@@ -663,34 +577,20 @@ joinRetryBtn.addEventListener("click",()=>{
 
 function updateSlotsUI(){
   if(!slotsGrid)return;slotsGrid.innerHTML="";
-  for(const[,p]of Object.entries(G.peers)){
-    if(!p.name)continue;
-    const div=document.createElement("div");
-    div.style.cssText="display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;font-weight:700;";
-    div.innerHTML='<div style="width:8px;height:8px;border-radius:50%;background:var(--accent3)"></div>'+esc(p.name);
-    slotsGrid.appendChild(div);
-  }
+  for(const[,p]of Object.entries(G.peers)){if(!p.name)continue;const div=document.createElement("div");div.style.cssText="display:flex;align-items:center;gap:.4rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-size:.8rem;font-weight:700;";div.innerHTML='<div style="width:8px;height:8px;border-radius:50%;background:var(--accent3)"></div>'+esc(p.name);slotsGrid.appendChild(div);}
 }
 
-// ── PLAYER TRACKING ──
 function initPlayer(id,name){G.auth[id]={score:0,guessedThisRound:false,roundPts:0};G.disp[id]={name,score:0,guessedThisRound:false};}
 function broadcastPlayerList(){broadcast({type:"player-list",players:[{id:"host",name:G.myName},...Object.entries(G.peers).map(([id,p])=>({id,name:p.name}))]});}
 function applyPlayerList(players){for(const p of players){if(p.id===G.myId)continue;if(!G.peers[p.id])G.peers[p.id]={name:p.name,conn:null};G.peers[p.id].name=p.name;if(!G.disp[p.id])G.disp[p.id]={name:p.name,score:0,guessedThisRound:false};}}
 
-// ── MESSAGE HANDLER ──
 function onMsg(raw,fromId){
   let msg;try{msg=JSON.parse(raw);}catch{return;}
-
-  // Handle assign-id for joiners (comes before join)
   if(msg.type==="assign-id"&&!G.isHost){
-    G.myId=msg.yourId;
-    // Now safe to introduce ourselves
-    sendToHost({type:"join",name:G.myName});
+    G.myId=msg.yourId;sendToHost({type:"join",name:G.myName});
     joinConnecting.style.display="none";joinConnected.style.display="";
-    setStatus("Connected! Waiting for host to start…","ok");
-    return;
+    setStatus("Connected! Waiting for host to start…","ok");return;
   }
-
   if(G.isHost){
     switch(msg.type){
       case "draw-relay":broadcast({...msg,type:"draw"},fromId);renderDraw(msg);return;
@@ -700,18 +600,13 @@ function onMsg(raw,fromId){
       case "hint-relay":broadcast({...msg,type:"word-hint"},fromId);applyHint(msg);return;
       case "word-chosen-relay":{const wc={...msg,type:"word-chosen"};broadcast(wc,fromId);applyWordChosen(wc);return;}
       case "chat":
-        if(msg.isGuess&&G.currentWord){
-          if(!checkGuess(msg.text,fromId,msg.name)){broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,isClose(msg.text));if(isClose(msg.text))sendTo(fromId,{type:"close-notice"});}
-        }else{broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,false);}
-        return;
+        if(msg.isGuess&&G.currentWord){if(!checkGuess(msg.text,fromId,msg.name)){broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,isClose(msg.text));if(isClose(msg.text))sendTo(fromId,{type:"close-notice"});}}
+        else{broadcast(msg,fromId);addChat(msg.name,msg.text,false,false,false);}return;
       case "join":
-        G.peers[fromId].name=msg.name;initPlayer(fromId,msg.name);
-        updatePlayerChips();updateSlotsUI();broadcastPlayerList();
+        G.peers[fromId].name=msg.name;initPlayer(fromId,msg.name);updatePlayerChips();updateSlotsUI();broadcastPlayerList();
         if(gameScreen.classList.contains("active")){sendTo(fromId,{type:"game-init",turnOrder:G.turnOrder,totalRounds:G.totalRounds,round:G.currentRound,selectedCategory:G.selectedCategory,peerMap:Object.fromEntries(Object.entries(G.peers).filter(([id])=>id!==fromId).map(([id,p])=>[id,{name:p.name}])),hostName:G.myName,yourId:fromId,lateJoin:true});}
-        addSystem(`${esc(msg.name)} joined!`);
-        setStatus(`${Object.values(G.peers).filter(p=>p.name).length+1} player(s) in lobby`,"ok");
-        setTimeout(()=>broadcastState(),200);
-        return;
+        addSystem(`${esc(msg.name)} joined!`);setStatus(`${Object.values(G.peers).filter(p=>p.name).length+1} player(s) in lobby`,"ok");
+        setTimeout(()=>broadcastState(),200);return;
     }
   }
   switch(msg.type){
@@ -735,7 +630,6 @@ function onMsg(raw,fromId){
   }
 }
 
-// ── GAME INIT ──
 function applyGameInit(msg){
   G.turnOrder=msg.turnOrder;G.totalRounds=msg.totalRounds;G.currentRound=msg.round;
   if(msg.maxTime)G.maxTime=msg.maxTime;
@@ -752,7 +646,6 @@ function showGameScreen(){
   updateScoreboard();addSystem("Game started! Good luck! 🎨");
 }
 
-// ── TURN MANAGEMENT ──
 function beginTurn(){
   G.guessedThisRound=false;G.endTurnCalled=false;G.guessCount=0;
   G.revealedIndices=new Set();G.currentWord=null;G.currentWordMasked=[];G.currentCategory="";
@@ -774,7 +667,6 @@ function applyNextTurn(msg){
   if(msg.drawer===G.myId)showWordChoice();else showWaitingUI(msg.drawerName);
 }
 
-// ── WORD CHOICE ──
 let wordChoiceTimer=null;
 function showWordChoice(){
   clearTimeout(wordChoiceTimer);const ch=pickWords();
@@ -814,7 +706,6 @@ function updateDrawerUI(){
   if(G.canDraw)chatInput.placeholder="You are drawing!";else if(G.guessedThisRound)chatInput.placeholder="You already guessed!";else chatInput.placeholder="Type your guess...";
 }
 
-// ── HINTS ──
 function revealLetter(){
   if(!G.currentWord||G.currentDrawer!==G.myId)return;
   const word=G.currentWord.word;
@@ -828,7 +719,6 @@ function revealLetter(){
 }
 function applyHint(msg){G.currentWordMasked=[...msg.masked];if(msg.revealedIdx!=null)G.revealedIndices.add(msg.revealedIdx);const cat=msg.category||G.currentCategory||"";G.currentCategory=cat;updateWordDisplay(G.currentWordMasked,cat);}
 
-// ── TIMER ──
 function startTimer(){
   clearInterval(G.timerInterval);G.timeLeft=G.maxTime;renderTimer();
   let hints=0;
@@ -844,7 +734,6 @@ function renderTimer(){
   timerFg.style.strokeDashoffset=circ*(1-pct);timerFg.style.stroke=pct>.5?"#6bcb77":pct>.25?"#ffd93d":"#ff6b6b";
 }
 
-// ── SCORING ──
 function calcPts(timeLeft,maxTime,guessOrder){
   const MAX_PTS=500,MIN_PTS=50;
   const timeFactor=0.2+0.8*(timeLeft/maxTime);
@@ -892,7 +781,6 @@ function endGame(){pushScores();const scores=Object.entries(G.disp).map(([id,d])
 function showGameEnd(scores){clearInterval(G.timerInterval);const medals=["🥇","🥈","🥉"];leaderboardList.innerHTML=scores.map((s,i)=>`<div class="lb-row"><div class="lb-rank">${medals[i]||i+1}</div><div class="lb-name">${esc(s.name)}${s.id===G.myId?' <span style="color:var(--text-muted)">(you)</span>':""}</div><div class="lb-pts">${s.score} pts</div></div>`).join("");gameEndOverlay.style.display="";}
 playAgainBtn.addEventListener("click",()=>location.reload());
 
-// ── GUESSING ──
 function isClose(t){if(!G.currentWord)return false;const g=t.trim().toLowerCase(),w=G.currentWord.word.toLowerCase();return lev(g,w)<=2&&g!==w;}
 function submitGuess(){
   const text=chatInput.value.trim();if(!text||G.canDraw||G.guessedThisRound)return;chatInput.value="";
@@ -904,8 +792,43 @@ sendBtn.addEventListener("click",submitGuess);
 function addChat(name,text,isOwn,isCorr,isCloseF){const d=document.createElement("div");d.className=`chat-msg${isOwn?" own":""}${isCorr?" correct":""}${isCloseF?" close":""}`;d.innerHTML=`<span class="sender">${esc(name)}:</span> ${esc(text)}`;chatMessages.appendChild(d);chatMessages.scrollTop=chatMessages.scrollHeight;}
 function addSystem(text){const d=document.createElement("div");d.className="chat-msg system";d.innerHTML=text;chatMessages.appendChild(d);chatMessages.scrollTop=chatMessages.scrollHeight;}
 
-// ── CANVAS ──
-function resizeCanvas(){const wp=canvas.parentElement,maxW=wp.clientWidth-10000,maxH=wp.clientHeight-10000;let w=maxW,h=w*3/4;if(h>maxH){h=maxH;w=h*4/3;}const old=(canvas.width>0)?ctx.getImageData(0,0,canvas.width,canvas.height):null;canvas.width=0|w;canvas.height=0|h;ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);if(old){try{ctx.putImageData(old,0,0);}catch{}}}
+// ── CANVAS RESIZE ──
+// Targets ~70% of viewport height for the canvas (like skribbl.io),
+// then constrains by available column width, maintaining 4:3 aspect ratio.
+function resizeCanvas(){
+  const ASPECT=4/3;
+  const CANVAS_TARGET_VH=0.70; // 70% of viewport height
+
+  // Available area inside the middle column
+  const areaW=canvasArea.clientWidth;
+  const areaH=canvasArea.clientHeight;
+
+  // Toolbar height (only if visible)
+  const toolbarVisible=toolbar.style.display!=="none";
+  const tbH=toolbarVisible?toolbar.offsetHeight+8:0;
+
+  // Padding in canvas-area (0.6rem * 2 top/bottom ≈ 20px, gap 0.5rem ≈ 8px)
+  const padding=28;
+
+  // Target height = 70% of viewport, but can't exceed available area
+  const maxH=areaH-tbH-padding;
+  const targetH=Math.min(window.innerHeight*CANVAS_TARGET_VH,maxH);
+
+  // Derive width from height, but also can't exceed column width
+  let h=targetH;
+  let w=h*ASPECT;
+  if(w>areaW-12){w=areaW-12;h=w/ASPECT;}
+
+  // Save old content
+  const old=(canvas.width>0&&canvas.height>0)?ctx.getImageData(0,0,canvas.width,canvas.height):null;
+
+  canvas.width=Math.floor(w);
+  canvas.height=Math.floor(h);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(old){try{ctx.putImageData(old,0,0);}catch{}}
+}
+
 function getPos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 function drawLine(x1,y1,x2,y2,col,sz,er){ctx.beginPath();ctx.strokeStyle=er?"#fff":col;ctx.lineWidth=er?sz*3:sz;ctx.lineCap=ctx.lineJoin="round";ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
 function clearCanvas(){ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);}
@@ -940,7 +863,6 @@ $("undo-btn").addEventListener("click",()=>doUndo());
 $("redo-btn").addEventListener("click",()=>doRedo());
 $("clear-btn").addEventListener("click",()=>{if(!G.canDraw)return;saveSnapshot();clearCanvas();redoStack.length=0;updateUndoButtons();const m={type:G.isHost?"clear":"clear-relay"};if(G.isHost)broadcast(m);else sendToHost(m);});
 
-// ── FLOOD FILL ──
 function floodFill(startX,startY,fillColor){
   startX=Math.round(startX);startY=Math.round(startY);
   const w=canvas.width,h=canvas.height,imageData=ctx.getImageData(0,0,w,h),data=imageData.data;
@@ -956,7 +878,6 @@ function floodFill(startX,startY,fillColor){
 function bcastFill(x,y){const m={type:G.isHost?"fill":"fill-relay",x:+(x/canvas.width).toFixed(4),y:+(y/canvas.height).toFixed(4),color:G.currentColor};if(G.isHost)broadcast(m);else sendToHost(m);}
 function renderFill(m){floodFill(m.x*canvas.width,m.y*canvas.height,m.color);}
 
-// ── SCOREBOARD ──
 function updatePlayerChips(){
   playerChips.innerHTML="";
   const s=document.createElement("div");s.className="player-chip host";s.innerHTML=`<div class="dot"></div>${esc(G.myName||"You")} (host)`;playerChips.appendChild(s);
@@ -969,7 +890,7 @@ function updateScoreboard(){
 }
 
 updatePlayerChips();
-}); // DOMContentLoaded
+});
 </script>
 </body>
 </html>
